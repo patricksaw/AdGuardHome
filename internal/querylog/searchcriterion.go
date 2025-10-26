@@ -35,6 +35,7 @@ const (
 	filteringStatusRewritten           = "rewritten"            // all kinds of rewrites
 	filteringStatusSafeSearch          = "safe_search"          // enforced safe search
 	filteringStatusProcessed           = "processed"            // not blocked, not white-listed entries
+	filteringStatusAlerts              = "blocklist_alerts"     // matched alert filters
 )
 
 // filteringStatusValues -- array with all possible filteringStatus values
@@ -42,7 +43,7 @@ var filteringStatusValues = []string{
 	filteringStatusAll, filteringStatusFiltered, filteringStatusBlocked,
 	filteringStatusBlockedService, filteringStatusBlockedSafebrowsing, filteringStatusBlockedParental,
 	filteringStatusWhitelisted, filteringStatusRewritten, filteringStatusSafeSearch,
-	filteringStatusProcessed,
+	filteringStatusProcessed, filteringStatusAlerts,
 }
 
 // searchCriterion is a search criterion that is used to match a record.
@@ -126,7 +127,7 @@ func (c *searchCriterion) match(entry *logEntry) bool {
 	case ctTerm:
 		return c.ctDomainOrClientCase(entry)
 	case ctFilteringStatus:
-		return c.ctFilteringStatusCase(entry.Result.Reason, entry.Result.IsFiltered)
+		return c.ctFilteringStatusCase(entry.Result.Reason, entry.Result.IsFiltered, entry.IsAlert)
 	}
 
 	return false
@@ -153,6 +154,7 @@ func (c *searchCriterion) ctDomainOrClientCase(e *logEntry) bool {
 func (c *searchCriterion) ctFilteringStatusCase(
 	reason filtering.Reason,
 	isFiltered bool,
+	isAlert bool,
 ) (matched bool) {
 	switch c.value {
 	case filteringStatusAll:
@@ -185,6 +187,8 @@ func (c *searchCriterion) ctFilteringStatusCase(
 			filtering.FilteredBlockedService,
 			filtering.NotFilteredAllowList,
 		)
+	case filteringStatusAlerts:
+		return isAlert
 	default:
 		return false
 	}

@@ -57,7 +57,7 @@ func TestDNSFilter_handleFilteringSetURL(t *testing.T) {
 			Enabled: true,
 			URL:     goodRulesEndpoint,
 			Name:    "default_one",
-			white:   false,
+			White:   false,
 		}},
 	}, {
 		name:     "non-existing",
@@ -69,7 +69,7 @@ func TestDNSFilter_handleFilteringSetURL(t *testing.T) {
 			Enabled: true,
 			URL:     goodRulesEndpoint,
 			Name:    "default_one",
-			white:   false,
+			White:   false,
 		}},
 	}, {
 		name:     "existing",
@@ -81,12 +81,12 @@ func TestDNSFilter_handleFilteringSetURL(t *testing.T) {
 			Enabled: true,
 			URL:     goodRulesEndpoint,
 			Name:    "default_one",
-			white:   false,
+			White:   false,
 		}, {
 			Enabled: true,
 			URL:     anotherGoodRulesEndpoint,
 			Name:    "another_default_one",
-			white:   false,
+			White:   false,
 		}},
 	}, {
 		name:     "bad_rules",
@@ -98,7 +98,7 @@ func TestDNSFilter_handleFilteringSetURL(t *testing.T) {
 			Enabled: true,
 			URL:     goodRulesEndpoint,
 			Name:    "default_one",
-			white:   false,
+			White:   false,
 		}},
 	}}
 

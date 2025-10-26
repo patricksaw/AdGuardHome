@@ -224,6 +224,7 @@ export const FILTERED_STATUS = {
     NOT_FILTERED_WHITE_LIST: 'NotFilteredWhiteList',
     NOT_FILTERED_NOT_FOUND: 'NotFilteredNotFound',
     FILTERED_BLOCKED_SERVICE: 'FilteredBlockedService',
+    FILTERED_ALERT: 'NotFilteredBlocklistAlert',
     REWRITE: 'Rewrite',
     REWRITE_HOSTS: 'RewriteEtcHosts',
     REWRITE_RULE: 'RewriteRule',
@@ -273,6 +274,10 @@ export const RESPONSE_FILTER = {
         QUERY: 'safe_search',
         LABEL: 'safe_search',
     },
+    ALERTS: {
+        QUERY: 'blocklist_alerts',
+        LABEL: 'blocklist_alerts',
+    },
 };
 
 export const RESPONSE_FILTER_QUERIES = Object.values(RESPONSE_FILTER).reduce(
@@ -310,6 +315,10 @@ export const FILTERED_STATUS_TO_META_MAP = {
     [FILTERED_STATUS.FILTERED_BLOCKED_SERVICE]: {
         LABEL: 'blocked_service',
         COLOR: QUERY_STATUS_COLORS.RED,
+    },
+    [FILTERED_STATUS.FILTERED_ALERT]: {
+        LABEL: 'not_filtered_blocklist_alert',
+        COLOR: QUERY_STATUS_COLORS.YELLOW,
     },
     [FILTERED_STATUS.FILTERED_SAFE_SEARCH]: {
         LABEL: RESPONSE_FILTER.SAFE_SEARCH.LABEL,

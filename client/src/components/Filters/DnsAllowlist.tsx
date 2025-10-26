@@ -62,9 +62,37 @@ class DnsAllowlist extends Component<DnsAllowlistProps> {
     };
 
     toggleFilter = (url: any, data: any) => {
+        const { filtering } = this.props;
         const whitelist = true;
 
-        this.props.toggleFilterStatus(url, data, whitelist);
+        // Find the filter to check current state
+        const filter = filtering.whitelistFilters?.find((f: any) => f.url === url);
+
+        // Determine if we're toggling alert or enabled
+        // If enabled changed, it's an enabled toggle; otherwise it's an alert toggle
+        const isAlertToggle = filter && data.enabled === filter.enabled;
+
+        let newEnabledValue = data.enabled;
+        let newAlertValue = filter?.alert || false;
+
+        if (isAlertToggle) {
+            // Toggling alert checkbox
+            newAlertValue = !filter.alert;
+            // If turning ON alert, turn OFF enabled (mutual exclusivity)
+            if (newAlertValue) {
+                newEnabledValue = false;
+            }
+        } else {
+            // Toggling enabled checkbox
+            newEnabledValue = !filter.enabled;
+            // If turning ON enabled, turn OFF alert (mutual exclusivity)
+            if (newEnabledValue) {
+                newAlertValue = false;
+            }
+        }
+
+        const updatedData = { ...data, enabled: newEnabledValue };
+        this.props.toggleFilterStatus(url, updatedData, whitelist, newAlertValue);
     };
 
     handleRefresh = () => {

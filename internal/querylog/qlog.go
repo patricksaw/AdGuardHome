@@ -203,6 +203,7 @@ func newLogEntry(ctx context.Context, logger *slog.Logger, params *AddParams) (e
 
 		Cached:            params.Cached,
 		AuthenticatedData: params.AuthenticatedData,
+		IsAlert:           params.IsAlert,
 	}
 
 	if params.ReqECS != nil {

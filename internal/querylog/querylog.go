@@ -116,6 +116,9 @@ type AddParams struct {
 
 	// AuthenticatedData shows if the response had the AD bit set.
 	AuthenticatedData bool
+
+	// IsAlert indicates if the request matched an alert filter.
+	IsAlert bool
 }
 
 // validate returns an error if the parameters aren't valid.

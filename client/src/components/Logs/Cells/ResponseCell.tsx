@@ -110,6 +110,7 @@ const ResponseCell = ({
                 }
                 return getServiceName(services.allServices, service_name);
             case FILTERED_STATUS.FILTERED_BLACK_LIST:
+            case FILTERED_STATUS.FILTERED_ALERT:
             case FILTERED_STATUS.NOT_FILTERED_WHITE_LIST:
                 return getFilterNames(rules, filters, whitelistFilters).join(', ');
             default:

@@ -78,6 +78,7 @@ interface RowProps {
         originalResponse?: unknown[];
         status: string;
         service_name?: string;
+        isAlert?: boolean;
     };
     isSmallScreen: boolean;
     setDetailedDataCurrent: Dispatch<SetStateAction<any>>;
@@ -284,6 +285,7 @@ const Row = memo(
             `logs__row--${FILTERED_STATUS_TO_META_MAP?.[reason]?.COLOR ?? QUERY_STATUS_COLORS.WHITE}`,
             {
                 'logs__cell--detailed': isDetailed,
+                'logs__row--alert': rowProps.isAlert,
             },
         );
 

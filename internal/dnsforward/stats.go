@@ -10,6 +10,7 @@ import (
 	"github.com/AdguardTeam/AdGuardHome/internal/querylog"
 	"github.com/AdguardTeam/AdGuardHome/internal/stats"
 	"github.com/AdguardTeam/dnsproxy/proxy"
+	"github.com/AdguardTeam/urlfilter/rules"
 	"github.com/miekg/dns"
 )
 
@@ -93,6 +94,21 @@ func (s *Server) shouldCountStat(host string, qt, cl uint16, ids []string) (ok b
 	return s.stats != nil && s.stats.ShouldCount(host, qt, cl, ids)
 }
 
+// isAlertMatch returns true if the result contains a rule from an alert filter.
+func (s *Server) isAlertMatch(res *filtering.Result) (ok bool) {
+	if res == nil || len(res.Rules) == 0 {
+		return false
+	}
+
+	for _, rule := range res.Rules {
+		if rule != nil && s.dnsFilter.IsAlertFilter(rules.ListID(rule.FilterListID)) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // logQuery pushes the request details into the query log.
 func (s *Server) logQuery(dctx *dnsContext, ip net.IP, processingTime time.Duration) {
 	pctx := dctx.proxyCtx
@@ -107,6 +123,7 @@ func (s *Server) logQuery(dctx *dnsContext, ip net.IP, processingTime time.Durat
 		ClientIP:          ip,
 		Elapsed:           processingTime,
 		AuthenticatedData: dctx.responseAD,
+		IsAlert:           s.isAlertMatch(dctx.result),
 	}
 
 	switch pctx.Proto {

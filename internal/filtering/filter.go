@@ -36,7 +36,8 @@ type FilterYAML struct {
 	RulesCount  int       `yaml:"-"`
 	LastUpdated time.Time `yaml:"-"`
 	checksum    uint32    // checksum of the file data
-	white       bool
+	White       bool      `yaml:"white,omitempty"`
+	Alert       bool      `yaml:"alert,omitempty"` // alert marks filter as alert-only (triggers alerts without blocking)
 
 	Filter `yaml:",inline"`
 }
@@ -93,39 +94,46 @@ func (d *DNSFilter) filterSetProperties(
 	listURL string,
 	newList FilterYAML,
 	isAllowlist bool,
+	isAlert bool,
 ) (shouldRestart bool, err error) {
 	d.conf.filtersMu.Lock()
 	defer d.conf.filtersMu.Unlock()
 
-	filters := d.conf.Filters
+	// Get a pointer to the actual slice in the config, not a copy
+	var filters *[]FilterYAML
 	if isAllowlist {
-		filters = d.conf.WhitelistFilters
+		filters = &d.conf.WhitelistFilters
+	} else {
+		filters = &d.conf.Filters
 	}
 
-	i := slices.IndexFunc(filters, func(flt FilterYAML) bool { return flt.URL == listURL })
+	i := slices.IndexFunc(*filters, func(flt FilterYAML) bool { return flt.URL == listURL })
 	if i == -1 {
 		return false, errFilterNotExist
 	}
 
-	flt := &filters[i]
-	d.logger.DebugContext(
+	flt := &(*filters)[i]
+	d.logger.InfoContext(
 		context.TODO(),
-		"updating filter",
+		"updating filter properties",
 		"name", newList.Name,
 		"url", newList.URL,
 		"enabled", newList.Enabled,
 		"filter_url", flt.URL,
+		"old_alert", flt.Alert,
+		"new_alert", isAlert,
 	)
 
-	defer func(oldURL, oldName string, oldEnabled bool, oldUpdated time.Time, oldRulesCount int) {
+	defer func(oldURL, oldName string, oldEnabled, oldAlert bool, oldUpdated time.Time, oldRulesCount int) {
 		if err != nil {
 			flt.URL = oldURL
 			flt.Name = oldName
 			flt.Enabled = oldEnabled
+			flt.Alert = oldAlert
 			flt.LastUpdated = oldUpdated
 			flt.RulesCount = oldRulesCount
 		}
-	}(flt.URL, flt.Name, flt.Enabled, flt.LastUpdated, flt.RulesCount)
+	}(flt.URL, flt.Name, flt.Enabled, flt.Alert, flt.LastUpdated, flt.RulesCount)
 
 	flt.Name = newList.Name
 
@@ -146,7 +154,21 @@ func (d *DNSFilter) filterSetProperties(
 		shouldRestart = true
 	}
 
-	if !flt.Enabled {
+	if flt.Alert != isAlert {
+		flt.Alert = isAlert
+		shouldRestart = true
+
+		d.logger.InfoContext(
+			context.TODO(),
+			"alert flag updated",
+			"filter_url", flt.URL,
+			"alert_value", flt.Alert,
+		)
+	}
+
+	// Download rules if either enabled OR alert is true
+	// This allows alert-only filters (enabled=false, alert=true)
+	if !flt.Enabled && !flt.Alert {
 		// TODO(e.burkov):  The validation of the contents of the new URL is
 		// currently skipped if the rule list is disabled.  This makes it
 		// possible to set a bad rules source, but the validation should still
@@ -157,6 +179,9 @@ func (d *DNSFilter) filterSetProperties(
 		return shouldRestart, err
 	}
 
+	// If only the alert flag changed (no URL or enabled changes),
+	// we don't need to update the filter contents, but we still
+	// return success so the config gets saved
 	if !shouldRestart {
 		return false, nil
 	}
@@ -207,7 +232,7 @@ func (d *DNSFilter) filterAdd(flt FilterYAML) (err error) {
 		return errFilterExists
 	}
 
-	if flt.white {
+	if flt.White {
 		d.conf.WhitelistFilters = append(d.conf.WhitelistFilters, flt)
 	} else {
 		d.conf.Filters = append(d.conf.Filters, flt)
@@ -228,8 +253,8 @@ func (d *DNSFilter) loadFilters(ctx context.Context, array []FilterYAML) {
 			filter.ID = newID
 		}
 
-		if !filter.Enabled {
-			// No need to load a filter that is not enabled
+		if !filter.Enabled && !filter.Alert {
+			// No need to load a filter that is neither enabled nor alerting
 			continue
 		}
 
@@ -281,7 +306,7 @@ func (d *DNSFilter) listsToUpdate(filters *[]FilterYAML, force bool) (toUpd []Fi
 	for i := range *filters {
 		flt := &(*filters)[i] // otherwise we will be operating on a copy
 
-		if !flt.Enabled {
+		if !flt.Enabled && !flt.Alert {
 			continue
 		}
 
@@ -662,7 +687,9 @@ func (d *DNSFilter) enableFiltersLocked(ctx context.Context, async bool) {
 	}
 
 	for _, filter := range d.conf.Filters {
-		if !filter.Enabled {
+		// Include filter if either enabled OR alert is true
+		// This allows alert-only filters to match without blocking
+		if !filter.Enabled && !filter.Alert {
 			continue
 		}
 
@@ -674,7 +701,8 @@ func (d *DNSFilter) enableFiltersLocked(ctx context.Context, async bool) {
 
 	var allowFilters []Filter
 	for _, filter := range d.conf.WhitelistFilters {
-		if !filter.Enabled {
+		// Include filter if either enabled OR alert is true
+		if !filter.Enabled && !filter.Alert {
 			continue
 		}
 

@@ -60,6 +60,7 @@ type filterAddJSON struct {
 	Name      string `json:"name"`
 	URL       string `json:"url"`
 	Whitelist bool   `json:"whitelist"`
+	Alert     bool   `json:"alert"` // Alert marks the filter as alert-only
 }
 
 func (d *DNSFilter) handleFilteringAddURL(w http.ResponseWriter, r *http.Request) {
@@ -111,7 +112,8 @@ func (d *DNSFilter) handleFilteringAddURL(w http.ResponseWriter, r *http.Request
 		Enabled: true,
 		URL:     fj.URL,
 		Name:    fj.Name,
-		white:   fj.Whitelist,
+		White:   fj.Whitelist,
+		Alert:   fj.Alert,
 		Filter: Filter{
 			ID: d.idGen.next(),
 		},
@@ -284,6 +286,7 @@ type filterURLReq struct {
 	Data      *filterURLReqData `json:"data"`
 	URL       string            `json:"url"`
 	Whitelist bool              `json:"whitelist"`
+	Alert     bool              `json:"alert"`
 }
 
 func (d *DNSFilter) handleFilteringSetURL(w http.ResponseWriter, r *http.Request) {
@@ -325,7 +328,7 @@ func (d *DNSFilter) handleFilteringSetURL(w http.ResponseWriter, r *http.Request
 		URL:     fj.Data.URL,
 	}
 
-	restart, err := d.filterSetProperties(fj.URL, filt, fj.Whitelist)
+	restart, err := d.filterSetProperties(fj.URL, filt, fj.Whitelist, fj.Alert)
 	if err != nil {
 		aghhttp.ErrorAndLog(ctx, l, r, w, http.StatusBadRequest, "%s", err)
 
@@ -410,6 +413,7 @@ type filterJSON struct {
 
 	RulesCount uint64 `json:"rules_count"`
 	Enabled    bool   `json:"enabled"`
+	Alert      bool   `json:"alert,omitempty"`
 }
 
 type filteringConfig struct {
@@ -429,6 +433,7 @@ func filterToJSON(f FilterYAML) filterJSON {
 		Name:    f.Name,
 		// #nosec G115 -- The number of rules must not be negative.
 		RulesCount: uint64(f.RulesCount),
+		Alert:      f.Alert,
 	}
 
 	if !f.LastUpdated.IsZero() {

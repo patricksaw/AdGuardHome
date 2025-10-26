@@ -346,6 +346,72 @@ func (d *DNSFilter) WriteDiskConfig(c *Config) {
 	c.UserRules = slices.Clone(d.conf.UserRules)
 }
 
+// IsAlertFilter returns true if the filter with the given ID is an alert filter.
+func (d *DNSFilter) IsAlertFilter(id rules.ListID) bool {
+	d.conf.filtersMu.RLock()
+	defer d.conf.filtersMu.RUnlock()
+
+	for _, f := range d.conf.Filters {
+		if f.ID == id && f.Alert {
+			return true
+		}
+	}
+
+	for _, f := range d.conf.WhitelistFilters {
+		if f.ID == id && f.Alert {
+			return true
+		}
+	}
+
+	return false
+}
+
+// IsFilterEnabled returns true if the filter with the given ID is enabled for blocking.
+// If the filter is not found in the config, it returns true. This handles raw filters
+// (passed directly to New()) which are always active and don't support alert mode.
+func (d *DNSFilter) IsFilterEnabled(id rules.ListID) bool {
+	d.conf.filtersMu.RLock()
+	defer d.conf.filtersMu.RUnlock()
+
+	for _, f := range d.conf.Filters {
+		if f.ID == id {
+			return f.Enabled
+		}
+	}
+
+	for _, f := range d.conf.WhitelistFilters {
+		if f.ID == id {
+			return f.Enabled
+		}
+	}
+
+	// Not found in config: raw filter (always enabled, alert mode not applicable)
+	return true
+}
+
+// IsFilterAlertOnly returns true if the filter with the given ID is in alert-only mode
+// (alert=true, enabled=false). Returns false for raw filters, as alert mode only
+// applies to user-managed FilterYAML filters.
+func (d *DNSFilter) IsFilterAlertOnly(id rules.ListID) bool {
+	d.conf.filtersMu.RLock()
+	defer d.conf.filtersMu.RUnlock()
+
+	for _, f := range d.conf.Filters {
+		if f.ID == id {
+			return f.Alert && !f.Enabled
+		}
+	}
+
+	for _, f := range d.conf.WhitelistFilters {
+		if f.ID == id {
+			return f.Alert && !f.Enabled
+		}
+	}
+
+	// Not found in config: raw filter (alert mode not applicable)
+	return false
+}
+
 // setFilters sets new filters, synchronously or asynchronously.  When filters
 // are set asynchronously, the old filters continue working until the new
 // filters are ready.
@@ -821,40 +887,83 @@ func (d *DNSFilter) matchHostProcessDNSResult(
 	dnsres *urlfilter.DNSResult,
 ) (res Result) {
 	if dnsres.NetworkRule != nil {
+		// Check if filter is enabled for blocking
+		filterID := rules.ListID(dnsres.NetworkRule.GetFilterListID())
+		isEnabled := d.IsFilterEnabled(filterID)
+		isAlertOnly := d.IsFilterAlertOnly(filterID)
+
 		reason := FilteredBlockList
 		if dnsres.NetworkRule.Whitelist {
 			reason = NotFilteredAllowList
 		}
 
+		// If filter is in alert-only mode, mark as FilteredAlert
+		if isAlertOnly && reason == FilteredBlockList {
+			return makeResult([]rules.Rule{dnsres.NetworkRule}, FilteredAlert)
+		}
+
+		// If filter is not enabled and not alert-only, don't match
+		if !isEnabled && reason == FilteredBlockList {
+			return Result{}
+		}
+
 		return makeResult([]rules.Rule{dnsres.NetworkRule}, reason)
 	}
 
-	if result, ok := resultFromHostRules(qtype, dnsres); ok {
+	if result, ok := d.resultFromHostRules(qtype, dnsres); ok {
 		return result
 	}
 
-	return hostResultForOtherQType(dnsres)
+	return d.hostResultForOtherQType(dnsres)
 }
 
 // resultFromHostRules handles the HostRulesV4/HostRulesV6 case for
 // [matchHostProcessDNSResult].  dnsres must not be nil.
-func resultFromHostRules(qtype uint16, dnsres *urlfilter.DNSResult) (res Result, ok bool) {
+func (d *DNSFilter) resultFromHostRules(qtype uint16, dnsres *urlfilter.DNSResult) (res Result, ok bool) {
 	if qtype == dns.TypeA && dnsres.HostRulesV4 != nil {
-		res = makeResult(hostRulesToRules(dnsres.HostRulesV4), FilteredBlockList)
-		for i, hr := range dnsres.HostRulesV4 {
-			res.Rules[i].IP = hr.IP
-		}
+		// Check if filter is enabled for blocking or in alert-only mode
+		if len(dnsres.HostRulesV4) > 0 {
+			filterID := rules.ListID(dnsres.HostRulesV4[0].GetFilterListID())
+			isEnabled := d.IsFilterEnabled(filterID)
+			isAlertOnly := d.IsFilterAlertOnly(filterID)
 
-		return res, true
+			reason := FilteredBlockList
+			if isAlertOnly {
+				reason = FilteredAlert
+			} else if !isEnabled {
+				return Result{}, false
+			}
+
+			res = makeResult(hostRulesToRules(dnsres.HostRulesV4), reason)
+			for i, hr := range dnsres.HostRulesV4 {
+				res.Rules[i].IP = hr.IP
+			}
+
+			return res, true
+		}
 	}
 
 	if qtype == dns.TypeAAAA && dnsres.HostRulesV6 != nil {
-		res = makeResult(hostRulesToRules(dnsres.HostRulesV6), FilteredBlockList)
-		for i, hr := range dnsres.HostRulesV6 {
-			res.Rules[i].IP = hr.IP
-		}
+		// Check if filter is enabled for blocking or in alert-only mode
+		if len(dnsres.HostRulesV6) > 0 {
+			filterID := rules.ListID(dnsres.HostRulesV6[0].GetFilterListID())
+			isEnabled := d.IsFilterEnabled(filterID)
+			isAlertOnly := d.IsFilterAlertOnly(filterID)
 
-		return res, true
+			reason := FilteredBlockList
+			if isAlertOnly {
+				reason = FilteredAlert
+			} else if !isEnabled {
+				return Result{}, false
+			}
+
+			res = makeResult(hostRulesToRules(dnsres.HostRulesV6), reason)
+			for i, hr := range dnsres.HostRulesV6 {
+				res.Rules[i].IP = hr.IP
+			}
+
+			return res, true
+		}
 	}
 
 	return Result{}, false
@@ -862,13 +971,37 @@ func resultFromHostRules(qtype uint16, dnsres *urlfilter.DNSResult) (res Result,
 
 // hostResultForOtherQType returns a result based on the host rules in dnsres,
 // if any.  dnsres.HostRulesV4 take precedence over dnsres.HostRulesV6.
-func hostResultForOtherQType(dnsres *urlfilter.DNSResult) (res Result) {
+func (d *DNSFilter) hostResultForOtherQType(dnsres *urlfilter.DNSResult) (res Result) {
 	if len(dnsres.HostRulesV4) != 0 {
-		return makeResult([]rules.Rule{dnsres.HostRulesV4[0]}, FilteredBlockList)
+		// Check if filter is enabled for blocking or in alert-only mode
+		filterID := rules.ListID(dnsres.HostRulesV4[0].GetFilterListID())
+		isEnabled := d.IsFilterEnabled(filterID)
+		isAlertOnly := d.IsFilterAlertOnly(filterID)
+
+		reason := FilteredBlockList
+		if isAlertOnly {
+			reason = FilteredAlert
+		} else if !isEnabled {
+			return Result{}
+		}
+
+		return makeResult([]rules.Rule{dnsres.HostRulesV4[0]}, reason)
 	}
 
 	if len(dnsres.HostRulesV6) != 0 {
-		return makeResult([]rules.Rule{dnsres.HostRulesV6[0]}, FilteredBlockList)
+		// Check if filter is enabled for blocking or in alert-only mode
+		filterID := rules.ListID(dnsres.HostRulesV6[0].GetFilterListID())
+		isEnabled := d.IsFilterEnabled(filterID)
+		isAlertOnly := d.IsFilterAlertOnly(filterID)
+
+		reason := FilteredBlockList
+		if isAlertOnly {
+			reason = FilteredAlert
+		} else if !isEnabled {
+			return Result{}
+		}
+
+		return makeResult([]rules.Rule{dnsres.HostRulesV6[0]}, reason)
 	}
 
 	return Result{}

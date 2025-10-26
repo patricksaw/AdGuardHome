@@ -48,11 +48,11 @@ export const addFilterFailure = createAction('ADD_FILTER_FAILURE');
 export const addFilterSuccess = createAction('ADD_FILTER_SUCCESS');
 
 export const addFilter =
-    (url: any, name: any, whitelist = false) =>
+    (url: any, name: any, whitelist = false, alert = false) =>
     async (dispatch: any, getState: any) => {
         dispatch(addFilterRequest());
         try {
-            await apiClient.addFilter({ url, name, whitelist });
+            await apiClient.addFilter({ url, name, whitelist, alert });
             dispatch(addFilterSuccess(url));
             if (getState().filtering.isModalOpen) {
                 dispatch(toggleFilteringModal());
@@ -92,11 +92,11 @@ export const toggleFilterFailure = createAction('FILTER_TOGGLE_FAILURE');
 export const toggleFilterSuccess = createAction('FILTER_TOGGLE_SUCCESS');
 
 export const toggleFilterStatus =
-    (url: any, data: any, whitelist = false) =>
+    (url: any, data: any, whitelist = false, alert = false) =>
     async (dispatch: any) => {
         dispatch(toggleFilterRequest());
         try {
-            await apiClient.setFilterUrl({ url, data, whitelist });
+            await apiClient.setFilterUrl({ url, data, whitelist, alert });
             dispatch(toggleFilterSuccess(url));
             dispatch(getFilteringStatus());
         } catch (error) {
@@ -110,11 +110,11 @@ export const editFilterFailure = createAction('EDIT_FILTER_FAILURE');
 export const editFilterSuccess = createAction('EDIT_FILTER_SUCCESS');
 
 export const editFilter =
-    (url: any, data: any, whitelist = false) =>
+    (url: any, data: any, whitelist = false, alert = false) =>
     async (dispatch: any, getState: any) => {
         dispatch(editFilterRequest());
         try {
-            await apiClient.setFilterUrl({ url, data, whitelist });
+            await apiClient.setFilterUrl({ url, data, whitelist, alert });
             dispatch(editFilterSuccess(url));
             if (getState().filtering.isModalOpen) {
                 dispatch(toggleFilteringModal());

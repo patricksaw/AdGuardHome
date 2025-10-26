@@ -42,6 +42,7 @@ type logEntry struct {
 
 	Cached            bool `json:",omitempty"`
 	AuthenticatedData bool `json:"AD,omitempty"`
+	IsAlert           bool `json:",omitempty"` // IsAlert indicates if the query matched an alert filter
 }
 
 // shallowClone returns a shallow clone of e.

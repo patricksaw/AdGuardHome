@@ -115,6 +115,10 @@ const (
 	//
 	// See https://github.com/AdguardTeam/AdGuardHome/issues/2499.
 	RewrittenRule
+
+	// FilteredAlert: the host matched a blocklist filter in alert-only mode
+	// (not filtered/blocked, but logged for monitoring).
+	FilteredAlert
 )
 
 // TODO(a.garipov): Resync with actual code names or replace completely in HTTP
@@ -134,6 +138,7 @@ var reasonNames = []string{
 	Rewritten:          "Rewrite",
 	RewrittenAutoHosts: "RewriteEtcHosts",
 	RewrittenRule:      "RewriteRule",
+	FilteredAlert:      "NotFilteredBlocklistAlert",
 }
 
 // type check

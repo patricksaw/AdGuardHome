@@ -163,7 +163,7 @@ export const addClientInfo = (data: any, clients: any, ...params: any[]) =>
 export const normalizeFilters = (filters: any) =>
     filters
         ? filters.map((filter: any) => {
-              const { id, url, enabled, last_updated, name = 'Default name', rules_count = 0 } = filter;
+              const { id, url, enabled, last_updated, name = 'Default name', rules_count = 0, alert = false } = filter;
 
               return {
                   id,
@@ -172,6 +172,7 @@ export const normalizeFilters = (filters: any) =>
                   lastUpdated: last_updated,
                   name,
                   rulesCount: rules_count,
+                  alert,
               };
           })
         : [];
@@ -864,6 +865,7 @@ export type Filter = {
     name: string;
     rulesCount: number;
     url: string;
+    alert?: boolean;
 };
 
 export type Rule = {
