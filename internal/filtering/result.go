@@ -119,6 +119,14 @@ const (
 	// FilteredAlert: the host matched a blocklist filter in alert-only mode
 	// (not filtered/blocked, but logged for monitoring).
 	FilteredAlert
+
+	// FilteredSafeBrowsingAlert: the host was matched to be malicious/phishing
+	// in alert-only mode (not blocked, but logged for monitoring).
+	FilteredSafeBrowsingAlert
+
+	// FilteredParentalAlert: the host was matched to be outside of parental
+	// control settings in alert-only mode (not blocked, but logged for monitoring).
+	FilteredParentalAlert
 )
 
 // TODO(a.garipov): Resync with actual code names or replace completely in HTTP
@@ -139,6 +147,9 @@ var reasonNames = []string{
 	RewrittenAutoHosts: "RewriteEtcHosts",
 	RewrittenRule:      "RewriteRule",
 	FilteredAlert:      "NotFilteredBlocklistAlert",
+
+	FilteredSafeBrowsingAlert: "FilteredSafeBrowsingAlert",
+	FilteredParentalAlert:     "FilteredParentalAlert",
 }
 
 // type check

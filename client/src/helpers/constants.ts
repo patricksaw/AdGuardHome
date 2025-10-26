@@ -230,7 +230,9 @@ export const FILTERED_STATUS = {
     REWRITE_RULE: 'RewriteRule',
     FILTERED_SAFE_SEARCH: 'FilteredSafeSearch',
     FILTERED_SAFE_BROWSING: 'FilteredSafeBrowsing',
+    FILTERED_SAFE_BROWSING_ALERT: 'FilteredSafeBrowsingAlert',
     FILTERED_PARENTAL: 'FilteredParental',
+    FILTERED_PARENTAL_ALERT: 'FilteredParentalAlert',
 };
 
 export const RESPONSE_FILTER = {
@@ -277,6 +279,14 @@ export const RESPONSE_FILTER = {
     ALERTS: {
         QUERY: 'blocklist_alerts',
         LABEL: 'blocklist_alerts',
+    },
+    SAFEBROWSING_ALERTS: {
+        QUERY: 'safebrowsing_alerts',
+        LABEL: 'safebrowsing_alerts',
+    },
+    PARENTAL_ALERTS: {
+        QUERY: 'parental_alerts',
+        LABEL: 'parental_alerts',
     },
 };
 
@@ -342,10 +352,18 @@ export const FILTERED_STATUS_TO_META_MAP = {
     },
     [FILTERED_STATUS.FILTERED_SAFE_BROWSING]: {
         LABEL: RESPONSE_FILTER.BLOCKED_THREATS.LABEL,
+        COLOR: QUERY_STATUS_COLORS.RED,
+    },
+    [FILTERED_STATUS.FILTERED_SAFE_BROWSING_ALERT]: {
+        LABEL: RESPONSE_FILTER.SAFEBROWSING_ALERTS.LABEL,
         COLOR: QUERY_STATUS_COLORS.YELLOW,
     },
     [FILTERED_STATUS.FILTERED_PARENTAL]: {
         LABEL: RESPONSE_FILTER.BLOCKED_ADULT_WEBSITES.LABEL,
+        COLOR: QUERY_STATUS_COLORS.RED,
+    },
+    [FILTERED_STATUS.FILTERED_PARENTAL_ALERT]: {
+        LABEL: RESPONSE_FILTER.PARENTAL_ALERTS.LABEL,
         COLOR: QUERY_STATUS_COLORS.YELLOW,
     },
 };

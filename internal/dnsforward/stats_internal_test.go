@@ -239,3 +239,88 @@ func TestServer_ProcessQueryLogsAndStats(t *testing.T) {
 		})
 	}
 }
+
+// TestServer_ProcessQueryLogsAndStats_AlertExclusion tests that alert-only
+// matches are excluded from statistics.
+func TestServer_ProcessQueryLogsAndStats_AlertExclusion(t *testing.T) {
+	const domain = "example.com."
+
+	testCases := []struct {
+		name             string
+		reason           filtering.Reason
+		wantStatsUpdated bool
+	}{{
+		name:             "blocklist_alert_excluded",
+		reason:           filtering.FilteredAlert,
+		wantStatsUpdated: false,
+	}, {
+		name:             "safebrowsing_alert_excluded",
+		reason:           filtering.FilteredSafeBrowsingAlert,
+		wantStatsUpdated: false,
+	}, {
+		name:             "parental_alert_excluded",
+		reason:           filtering.FilteredParentalAlert,
+		wantStatsUpdated: false,
+	}, {
+		name:             "blocklist_counted",
+		reason:           filtering.FilteredBlockList,
+		wantStatsUpdated: true,
+	}, {
+		name:             "safebrowsing_counted",
+		reason:           filtering.FilteredSafeBrowsing,
+		wantStatsUpdated: true,
+	}, {
+		name:             "parental_counted",
+		reason:           filtering.FilteredParental,
+		wantStatsUpdated: true,
+	}}
+
+	ups, err := upstream.AddressToUpstream("1.1.1.1", nil)
+	require.NoError(t, err)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ql := &testQueryLog{}
+			st := &testStats{}
+			srv := &Server{
+				baseLogger: testLogger,
+				logger:     testLogger,
+				queryLog:   ql,
+				stats:      st,
+				anonymizer: aghnet.NewIPMut(nil),
+			}
+
+			req := &dns.Msg{
+				Question: []dns.Question{{
+					Name: domain,
+				}},
+			}
+			pctx := &proxy.DNSContext{
+				Proto:    proxy.ProtoUDP,
+				Req:      req,
+				Res:      &dns.Msg{},
+				Addr:     testClientAddrPort,
+				Upstream: ups,
+			}
+			dctx := &dnsContext{
+				proxyCtx:  pctx,
+				startTime: time.Now(),
+				result: &filtering.Result{
+					Reason: tc.reason,
+				},
+				clientID: "",
+			}
+
+			code := srv.processQueryLogsAndStats(testutil.ContextWithTimeout(t, testTimeout), dctx)
+			assert.Equal(t, resultCodeSuccess, code)
+
+			if tc.wantStatsUpdated {
+				require.NotNil(t, st.lastEntry, "expected stats to be updated")
+				// Stats store domain without trailing dot.
+				assert.Equal(t, "example.com", st.lastEntry.Domain)
+			} else {
+				assert.Nil(t, st.lastEntry, "expected stats to be skipped for alert-only matches")
+			}
+		})
+	}
+}

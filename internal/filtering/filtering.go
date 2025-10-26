@@ -55,11 +55,13 @@ type Settings struct {
 	// is nil if the client does not have any blocked services.
 	BlockedServices *BlockedServices
 
-	ProtectionEnabled   bool
-	FilteringEnabled    bool
-	SafeSearchEnabled   bool
-	SafeBrowsingEnabled bool
-	ParentalEnabled     bool
+	ProtectionEnabled     bool
+	FilteringEnabled      bool
+	SafeSearchEnabled     bool
+	SafeBrowsingEnabled   bool
+	SafeBrowsingAlertOnly bool
+	ParentalEnabled       bool
+	ParentalAlertOnly     bool
 
 	// ClientSafeSearch is a client configured safe search.
 	ClientSafeSearch SafeSearch
@@ -181,8 +183,10 @@ type Config struct {
 	// RewritesEnabled indicates whether legacy rewrites are applied.
 	RewritesEnabled bool `yaml:"rewrites_enabled"`
 
-	ParentalEnabled     bool `yaml:"parental_enabled"`
-	SafeBrowsingEnabled bool `yaml:"safebrowsing_enabled"`
+	ParentalEnabled       bool `yaml:"parental_enabled"`
+	ParentalAlertOnly     bool `yaml:"parental_alert_only"`
+	SafeBrowsingEnabled   bool `yaml:"safebrowsing_enabled"`
+	SafeBrowsingAlertOnly bool `yaml:"safebrowsing_alert_only"`
 
 	// ProtectionEnabled defines whether or not use any of filtering features.
 	ProtectionEnabled bool `yaml:"protection_enabled"`
@@ -321,10 +325,12 @@ func (d *DNSFilter) Settings() (s *Settings) {
 	defer d.confMu.RUnlock()
 
 	return &Settings{
-		FilteringEnabled:    atomic.LoadUint32(&d.conf.enabled) != 0,
-		SafeSearchEnabled:   d.conf.SafeSearchConf.Enabled,
-		SafeBrowsingEnabled: d.conf.SafeBrowsingEnabled,
-		ParentalEnabled:     d.conf.ParentalEnabled,
+		FilteringEnabled:      atomic.LoadUint32(&d.conf.enabled) != 0,
+		SafeSearchEnabled:     d.conf.SafeSearchConf.Enabled,
+		SafeBrowsingEnabled:   d.conf.SafeBrowsingEnabled,
+		SafeBrowsingAlertOnly: d.conf.SafeBrowsingAlertOnly,
+		ParentalEnabled:       d.conf.ParentalEnabled,
+		ParentalAlertOnly:     d.conf.ParentalAlertOnly,
 	}
 }
 
@@ -1266,7 +1272,8 @@ func (d *DNSFilter) checkSafeBrowsing(
 	_ uint16,
 	setts *Settings,
 ) (res Result, err error) {
-	if !setts.ProtectionEnabled || !setts.SafeBrowsingEnabled {
+	// Skip if both disabled and not in alert-only mode.
+	if !setts.ProtectionEnabled || (!setts.SafeBrowsingEnabled && !setts.SafeBrowsingAlertOnly) {
 		return Result{}, nil
 	}
 
@@ -1279,18 +1286,28 @@ func (d *DNSFilter) checkSafeBrowsing(
 		}()
 	}
 
+	block, err := d.safeBrowsingChecker.Check(host)
+	if !block || err != nil {
+		return Result{}, err
+	}
+
+	// Determine reason and filtering status based on mode.
+	reason := FilteredSafeBrowsing
+	isFiltered := true
+
+	if setts.SafeBrowsingAlertOnly && !setts.SafeBrowsingEnabled {
+		// Alert-only mode: log but don't block.
+		reason = FilteredSafeBrowsingAlert
+		isFiltered = false
+	}
+
 	res = Result{
 		Rules: []*ResultRule{{
 			Text:         "adguard-malware-shavar",
 			FilterListID: rulelist.APIIDSafeBrowsing,
 		}},
-		Reason:     FilteredSafeBrowsing,
-		IsFiltered: true,
-	}
-
-	block, err := d.safeBrowsingChecker.Check(host)
-	if !block || err != nil {
-		return Result{}, err
+		Reason:     reason,
+		IsFiltered: isFiltered,
 	}
 
 	return res, nil
@@ -1302,7 +1319,8 @@ func (d *DNSFilter) checkParental(
 	_ uint16,
 	setts *Settings,
 ) (res Result, err error) {
-	if !setts.ProtectionEnabled || !setts.ParentalEnabled {
+	// Skip if both disabled and not in alert-only mode.
+	if !setts.ProtectionEnabled || (!setts.ParentalEnabled && !setts.ParentalAlertOnly) {
 		return Result{}, nil
 	}
 
@@ -1315,18 +1333,28 @@ func (d *DNSFilter) checkParental(
 		}()
 	}
 
+	block, err := d.parentalControlChecker.Check(host)
+	if !block || err != nil {
+		return Result{}, err
+	}
+
+	// Determine reason and filtering status based on mode.
+	reason := FilteredParental
+	isFiltered := true
+
+	if setts.ParentalAlertOnly && !setts.ParentalEnabled {
+		// Alert-only mode: log but don't block.
+		reason = FilteredParentalAlert
+		isFiltered = false
+	}
+
 	res = Result{
 		Rules: []*ResultRule{{
 			Text:         "parental CATEGORY_BLACKLISTED",
 			FilterListID: rulelist.APIIDParentalControl,
 		}},
-		Reason:     FilteredParental,
-		IsFiltered: true,
-	}
-
-	block, err := d.parentalControlChecker.Check(host)
-	if !block || err != nil {
-		return Result{}, err
+		Reason:     reason,
+		IsFiltered: isFiltered,
 	}
 
 	return res, nil

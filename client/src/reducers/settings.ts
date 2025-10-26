@@ -16,7 +16,10 @@ const settings = handleActions(
             const { settingsList } = payload;
             const newState = {
                 ...state,
-                settingsList,
+                settingsList: {
+                    ...state.settingsList,
+                    ...settingsList,
+                },
                 processing: false,
             };
             return newState;

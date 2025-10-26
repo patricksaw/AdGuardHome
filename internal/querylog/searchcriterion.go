@@ -35,7 +35,9 @@ const (
 	filteringStatusRewritten           = "rewritten"            // all kinds of rewrites
 	filteringStatusSafeSearch          = "safe_search"          // enforced safe search
 	filteringStatusProcessed           = "processed"            // not blocked, not white-listed entries
-	filteringStatusAlerts              = "blocklist_alerts"     // matched alert filters
+	filteringStatusAlerts              = "blocklist_alerts"     // matched blocklist alert filters
+	filteringStatusSafebrowsingAlerts  = "safebrowsing_alerts"  // matched safebrowsing alert filters
+	filteringStatusParentalAlerts      = "parental_alerts"      // matched parental alert filters
 )
 
 // filteringStatusValues -- array with all possible filteringStatus values
@@ -43,7 +45,8 @@ var filteringStatusValues = []string{
 	filteringStatusAll, filteringStatusFiltered, filteringStatusBlocked,
 	filteringStatusBlockedService, filteringStatusBlockedSafebrowsing, filteringStatusBlockedParental,
 	filteringStatusWhitelisted, filteringStatusRewritten, filteringStatusSafeSearch,
-	filteringStatusProcessed, filteringStatusAlerts,
+	filteringStatusProcessed, filteringStatusAlerts, filteringStatusSafebrowsingAlerts,
+	filteringStatusParentalAlerts,
 }
 
 // searchCriterion is a search criterion that is used to match a record.
@@ -188,7 +191,11 @@ func (c *searchCriterion) ctFilteringStatusCase(
 			filtering.NotFilteredAllowList,
 		)
 	case filteringStatusAlerts:
-		return isAlert
+		return reason == filtering.FilteredAlert
+	case filteringStatusSafebrowsingAlerts:
+		return reason == filtering.FilteredSafeBrowsingAlert
+	case filteringStatusParentalAlerts:
+		return reason == filtering.FilteredParentalAlert
 	default:
 		return false
 	}

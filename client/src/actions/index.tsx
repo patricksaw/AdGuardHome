@@ -37,43 +37,87 @@ export const showSettingsFailure = createAction('SETTINGS_FAILURE_SHOW');
  * @param {*} status: boolean | SafeSearchConfig
  * @returns
  */
-export const toggleSetting = (settingKey: any, status: any) => async (dispatch: any) => {
-    let successMessage = '';
-    try {
-        switch (settingKey) {
-            case SETTINGS_NAMES.safebrowsing:
-                if (status) {
-                    successMessage = 'disabled_safe_browsing_toast';
-                    await apiClient.disableSafebrowsing();
-                } else {
-                    successMessage = 'enabled_safe_browsing_toast';
-                    await apiClient.enableSafebrowsing();
-                }
-                dispatch(toggleSettingStatus({ settingKey }));
-                break;
-            case SETTINGS_NAMES.parental:
-                if (status) {
-                    successMessage = 'disabled_parental_toast';
-                    await apiClient.disableParentalControl();
-                } else {
-                    successMessage = 'enabled_parental_toast';
-                    await apiClient.enableParentalControl();
-                }
-                dispatch(toggleSettingStatus({ settingKey }));
-                break;
-            case SETTINGS_NAMES.safesearch:
-                successMessage = 'updated_save_search_toast';
-                await apiClient.updateSafesearch(status);
-                dispatch(toggleSettingStatus({ settingKey, value: status }));
-                break;
-            default:
-                break;
+export const toggleSetting =
+    (settingKey: any, status: any, mode: 'enabled' | 'alert' = 'enabled') =>
+    async (dispatch: any) => {
+        let successMessage = '';
+        try {
+            switch (settingKey) {
+                case SETTINGS_NAMES.safebrowsing:
+                    if (mode === 'enabled') {
+                        if (status) {
+                            successMessage = 'disabled_safe_browsing_toast';
+                            await apiClient.disableSafebrowsing();
+                        } else {
+                            successMessage = 'enabled_safe_browsing_toast';
+                            await apiClient.enableSafebrowsing();
+                        }
+                    } else if (mode === 'alert') {
+                        if (status) {
+                            successMessage = 'disabled_safe_browsing_alert_toast';
+                            await apiClient.disableSafebrowsingAlert();
+                        } else {
+                            successMessage = 'enabled_safe_browsing_alert_toast';
+                            await apiClient.enableSafebrowsingAlert();
+                        }
+                    }
+                    // Refetch status to get correct enabled/alert values after API call
+                    const safebrowsingStatus = await apiClient.getSafebrowsingStatus();
+                    dispatch(
+                        initSettingsSuccess({
+                            settingsList: {
+                                safebrowsing: {
+                                    enabled: safebrowsingStatus.enabled,
+                                    alert: safebrowsingStatus.alert,
+                                },
+                            },
+                        }),
+                    );
+                    break;
+                case SETTINGS_NAMES.parental:
+                    if (mode === 'enabled') {
+                        if (status) {
+                            successMessage = 'disabled_parental_toast';
+                            await apiClient.disableParentalControl();
+                        } else {
+                            successMessage = 'enabled_parental_toast';
+                            await apiClient.enableParentalControl();
+                        }
+                    } else if (mode === 'alert') {
+                        if (status) {
+                            successMessage = 'disabled_parental_alert_toast';
+                            await apiClient.disableParentalAlert();
+                        } else {
+                            successMessage = 'enabled_parental_alert_toast';
+                            await apiClient.enableParentalAlert();
+                        }
+                    }
+                    // Refetch status to get correct enabled/alert values after API call
+                    const parentalStatus = await apiClient.getParentalStatus();
+                    dispatch(
+                        initSettingsSuccess({
+                            settingsList: {
+                                parental: {
+                                    enabled: parentalStatus.enabled,
+                                    alert: parentalStatus.alert,
+                                },
+                            },
+                        }),
+                    );
+                    break;
+                case SETTINGS_NAMES.safesearch:
+                    successMessage = 'updated_save_search_toast';
+                    await apiClient.updateSafesearch(status);
+                    dispatch(toggleSettingStatus({ settingKey, value: status }));
+                    break;
+                default:
+                    break;
+            }
+            dispatch(addSuccessToast(successMessage));
+        } catch (error) {
+            dispatch(addErrorToast({ error }));
         }
-        dispatch(addSuccessToast(successMessage));
-    } catch (error) {
-        dispatch(addErrorToast({ error }));
-    }
-};
+    };
 
 export const initSettingsRequest = createAction('SETTINGS_INIT_REQUEST');
 export const initSettingsFailure = createAction('SETTINGS_INIT_FAILURE');
@@ -97,10 +141,12 @@ export const initSettings =
                 safebrowsing: {
                     ...safebrowsing,
                     enabled: safebrowsingStatus.enabled,
+                    alert: safebrowsingStatus.alert,
                 },
                 parental: {
                     ...parental,
                     enabled: parentalStatus.enabled,
+                    alert: parentalStatus.alert,
                 },
                 safesearch: {
                     ...safesearchStatus,

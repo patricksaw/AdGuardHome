@@ -148,12 +148,14 @@ export type SettingsData = {
     settingsList?: {
         parental: {
             enabled: boolean;
+            alert: boolean;
             order: number;
             subtitle: string;
             title: string;
         };
         safebrowsing: {
             enabled: boolean;
+            alert: boolean;
             order: number;
             subtitle: string;
             title: string;

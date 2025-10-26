@@ -22,22 +22,7 @@ import { SettingsData } from '../../initialState';
 
 const ORDER_KEY = 'order';
 
-const SETTINGS = {
-    safebrowsing: {
-        enabled: false,
-        title: i18next.t('use_adguard_browsing_sec'),
-        subtitle: i18next.t('use_adguard_browsing_sec_hint'),
-        testId: 'safebrowsing',
-        [ORDER_KEY]: 0,
-    },
-    parental: {
-        enabled: false,
-        title: i18next.t('use_adguard_parental'),
-        subtitle: i18next.t('use_adguard_parental_hint'),
-        testId: 'parental',
-        [ORDER_KEY]: 1,
-    },
-};
+const SETTINGS = {};
 
 interface SettingsProps {
     initSettings: (...args: unknown[]) => unknown;
@@ -106,6 +91,78 @@ class Settings extends Component<SettingsProps> {
                 </div>
             );
         });
+
+    renderSafeBrowsing = () => {
+        const {
+            settings: {
+                settingsList: { safebrowsing },
+            },
+        } = this.props;
+        const { enabled = false, alert = false } = safebrowsing || {};
+
+        return (
+            <div className="form__group form__group--settings">
+                <label className="form__label form__label--with-desc">
+                    <span className="form__label-title">{i18next.t('use_adguard_browsing_sec')}</span>
+                    <span className="form__label-desc">{i18next.t('use_adguard_browsing_sec_hint')}</span>
+                </label>
+                <div className="form__inline form__inline--settings">
+                    <div className="form__group form__group--checkbox">
+                        <Checkbox
+                            data-testid="safebrowsing-enabled"
+                            value={enabled}
+                            title={i18next.t('enabled_table_header')}
+                            onChange={(checked) => this.props.toggleSetting('safebrowsing', !checked, 'enabled')}
+                        />
+                    </div>
+                    <div className="form__group form__group--checkbox ml-4">
+                        <Checkbox
+                            data-testid="safebrowsing-alert"
+                            value={alert}
+                            title={i18next.t('alert_only')}
+                            onChange={(checked) => this.props.toggleSetting('safebrowsing', !checked, 'alert')}
+                        />
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    renderParental = () => {
+        const {
+            settings: {
+                settingsList: { parental },
+            },
+        } = this.props;
+        const { enabled = false, alert = false } = parental || {};
+
+        return (
+            <div className="form__group form__group--settings">
+                <label className="form__label form__label--with-desc">
+                    <span className="form__label-title">{i18next.t('use_adguard_parental')}</span>
+                    <span className="form__label-desc">{i18next.t('use_adguard_parental_hint')}</span>
+                </label>
+                <div className="form__inline form__inline--settings">
+                    <div className="form__group form__group--checkbox">
+                        <Checkbox
+                            data-testid="parental-enabled"
+                            value={enabled}
+                            title={i18next.t('enabled_table_header')}
+                            onChange={(checked) => this.props.toggleSetting('parental', !checked, 'enabled')}
+                        />
+                    </div>
+                    <div className="form__group form__group--checkbox ml-4">
+                        <Checkbox
+                            data-testid="parental-alert"
+                            value={alert}
+                            title={i18next.t('alert_only')}
+                            onChange={(checked) => this.props.toggleSetting('parental', !checked, 'alert')}
+                        />
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     renderSafeSearch = () => {
         const {
@@ -185,7 +242,8 @@ class Settings extends Component<SettingsProps> {
                                             processing={filtering.processingSetConfig}
                                             setFiltersConfig={setFiltersConfig}
                                         />
-                                        {this.renderSettings(settings.settingsList)}
+                                        {this.renderSafeBrowsing()}
+                                        {this.renderParental()}
                                         {this.renderSafeSearch()}
                                     </div>
                                 </Card>

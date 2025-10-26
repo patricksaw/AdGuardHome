@@ -329,6 +329,220 @@ func TestDNSFilter_handleParentalStatus(t *testing.T) {
 	}
 }
 
+func TestDNSFilter_handleSafeBrowsingAlertMode(t *testing.T) {
+	const (
+		testTimeout = time.Second
+		statusURL   = "/control/safebrowsing/status"
+	)
+
+	confModCh := make(chan struct{})
+	filtersDir := t.TempDir()
+
+	testCases := []struct {
+		name             string
+		url              string
+		initialEnabled   bool
+		initialAlert     bool
+		wantEnabled      bool
+		wantAlert        bool
+		wantConfModified bool
+	}{{
+		name:             "enable_alert_when_both_off",
+		url:              "/control/safebrowsing/alert/enable",
+		initialEnabled:   false,
+		initialAlert:     false,
+		wantEnabled:      false,
+		wantAlert:        true,
+		wantConfModified: true,
+	}, {
+		name:             "enable_alert_when_blocking_on",
+		url:              "/control/safebrowsing/alert/enable",
+		initialEnabled:   true,
+		initialAlert:     false,
+		wantEnabled:      false, // Should be disabled due to mutual exclusivity.
+		wantAlert:        true,
+		wantConfModified: true,
+	}, {
+		name:             "disable_alert",
+		url:              "/control/safebrowsing/alert/disable",
+		initialEnabled:   false,
+		initialAlert:     true,
+		wantEnabled:      false,
+		wantAlert:        false,
+		wantConfModified: true,
+	}, {
+		name:             "enable_blocking_when_alert_on",
+		url:              "/control/safebrowsing/enable",
+		initialEnabled:   false,
+		initialAlert:     true,
+		wantEnabled:      true,
+		wantAlert:        false, // Should be disabled due to mutual exclusivity.
+		wantConfModified: true,
+	}}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			handlers := make(map[string]http.Handler)
+			confModifier := &aghtest.ConfigModifier{}
+			confModifier.OnApply = func(_ context.Context) {
+				testutil.RequireSend(testutil.PanicT{}, confModCh, struct{}{}, testTimeout)
+			}
+
+			d, err := New(&Config{
+				Logger:                testLogger,
+				ConfModifier:          confModifier,
+				DataDir:               filtersDir,
+				SafeBrowsingEnabled:   tc.initialEnabled,
+				SafeBrowsingAlertOnly: tc.initialAlert,
+				HTTPReg: &aghtest.Registrar{
+					OnRegister: func(_, url string, handler http.HandlerFunc) {
+						handlers[url] = handler
+					},
+				},
+			}, nil)
+			require.NoError(t, err)
+			t.Cleanup(d.Close)
+
+			d.RegisterFilteringHandlers()
+			require.NotEmpty(t, handlers)
+			require.Contains(t, handlers, statusURL)
+
+			r := httptest.NewRequest(http.MethodPost, tc.url, nil)
+			w := httptest.NewRecorder()
+
+			go handlers[tc.url].ServeHTTP(w, r)
+
+			if tc.wantConfModified {
+				testutil.RequireReceive(t, confModCh, testTimeout)
+			}
+
+			r = httptest.NewRequest(http.MethodGet, statusURL, nil)
+			w = httptest.NewRecorder()
+
+			handlers[statusURL].ServeHTTP(w, r)
+			require.Equal(t, http.StatusOK, w.Code)
+
+			status := struct {
+				Enabled bool `json:"enabled"`
+				Alert   bool `json:"alert"`
+			}{}
+
+			err = json.NewDecoder(w.Body).Decode(&status)
+			require.NoError(t, err)
+
+			assert.Equal(t, tc.wantEnabled, status.Enabled, "enabled mismatch")
+			assert.Equal(t, tc.wantAlert, status.Alert, "alert mismatch")
+		})
+	}
+}
+
+func TestDNSFilter_handleParentalAlertMode(t *testing.T) {
+	const (
+		testTimeout = time.Second
+		statusURL   = "/control/parental/status"
+	)
+
+	confModCh := make(chan struct{})
+	filtersDir := t.TempDir()
+
+	testCases := []struct {
+		name             string
+		url              string
+		initialEnabled   bool
+		initialAlert     bool
+		wantEnabled      bool
+		wantAlert        bool
+		wantConfModified bool
+	}{{
+		name:             "enable_alert_when_both_off",
+		url:              "/control/parental/alert/enable",
+		initialEnabled:   false,
+		initialAlert:     false,
+		wantEnabled:      false,
+		wantAlert:        true,
+		wantConfModified: true,
+	}, {
+		name:             "enable_alert_when_blocking_on",
+		url:              "/control/parental/alert/enable",
+		initialEnabled:   true,
+		initialAlert:     false,
+		wantEnabled:      false, // Should be disabled due to mutual exclusivity.
+		wantAlert:        true,
+		wantConfModified: true,
+	}, {
+		name:             "disable_alert",
+		url:              "/control/parental/alert/disable",
+		initialEnabled:   false,
+		initialAlert:     true,
+		wantEnabled:      false,
+		wantAlert:        false,
+		wantConfModified: true,
+	}, {
+		name:             "enable_blocking_when_alert_on",
+		url:              "/control/parental/enable",
+		initialEnabled:   false,
+		initialAlert:     true,
+		wantEnabled:      true,
+		wantAlert:        false, // Should be disabled due to mutual exclusivity.
+		wantConfModified: true,
+	}}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			handlers := make(map[string]http.Handler)
+			confModifier := &aghtest.ConfigModifier{}
+			confModifier.OnApply = func(_ context.Context) {
+				testutil.RequireSend(testutil.PanicT{}, confModCh, struct{}{}, testTimeout)
+			}
+
+			d, err := New(&Config{
+				Logger:            testLogger,
+				ConfModifier:      confModifier,
+				DataDir:           filtersDir,
+				ParentalEnabled:   tc.initialEnabled,
+				ParentalAlertOnly: tc.initialAlert,
+				HTTPReg: &aghtest.Registrar{
+					OnRegister: func(_, url string, handler http.HandlerFunc) {
+						handlers[url] = handler
+					},
+				},
+			}, nil)
+			require.NoError(t, err)
+			t.Cleanup(d.Close)
+
+			d.RegisterFilteringHandlers()
+			require.NotEmpty(t, handlers)
+			require.Contains(t, handlers, statusURL)
+
+			r := httptest.NewRequest(http.MethodPost, tc.url, nil)
+			w := httptest.NewRecorder()
+
+			go handlers[tc.url].ServeHTTP(w, r)
+
+			if tc.wantConfModified {
+				testutil.RequireReceive(t, confModCh, testTimeout)
+			}
+
+			r = httptest.NewRequest(http.MethodGet, statusURL, nil)
+			w = httptest.NewRecorder()
+
+			handlers[statusURL].ServeHTTP(w, r)
+			require.Equal(t, http.StatusOK, w.Code)
+
+			status := struct {
+				Enabled bool `json:"enabled"`
+				Alert   bool `json:"alert"`
+			}{}
+
+			err = json.NewDecoder(w.Body).Decode(&status)
+			require.NoError(t, err)
+
+			assert.Equal(t, tc.wantEnabled, status.Enabled, "enabled mismatch")
+			assert.Equal(t, tc.wantAlert, status.Alert, "alert mismatch")
+		})
+	}
+}
+
 func TestDNSFilter_HandleCheckHost(t *testing.T) {
 	const (
 		cliName = "client_name"

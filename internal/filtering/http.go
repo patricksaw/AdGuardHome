@@ -667,24 +667,55 @@ func protectedBool(mu *sync.RWMutex, ptr *bool) (val bool) {
 // handleSafeBrowsingEnable is the handler for the POST
 // /control/safebrowsing/enable HTTP API.
 func (d *DNSFilter) handleSafeBrowsingEnable(w http.ResponseWriter, r *http.Request) {
-	setProtectedBool(d.confMu, &d.conf.SafeBrowsingEnabled, true)
+	d.confMu.Lock()
+	d.conf.SafeBrowsingEnabled = true
+	d.conf.SafeBrowsingAlertOnly = false
+	d.confMu.Unlock()
+
 	d.conf.ConfModifier.Apply(r.Context())
 }
 
 // handleSafeBrowsingDisable is the handler for the POST
 // /control/safebrowsing/disable HTTP API.
 func (d *DNSFilter) handleSafeBrowsingDisable(w http.ResponseWriter, r *http.Request) {
-	setProtectedBool(d.confMu, &d.conf.SafeBrowsingEnabled, false)
+	d.confMu.Lock()
+	d.conf.SafeBrowsingEnabled = false
+	d.conf.SafeBrowsingAlertOnly = false
+	d.confMu.Unlock()
+
+	d.conf.ConfModifier.Apply(r.Context())
+}
+
+// handleSafeBrowsingAlertEnable is the handler for the POST
+// /control/safebrowsing/alert/enable HTTP API.
+func (d *DNSFilter) handleSafeBrowsingAlertEnable(w http.ResponseWriter, r *http.Request) {
+	d.confMu.Lock()
+	d.conf.SafeBrowsingAlertOnly = true
+	d.conf.SafeBrowsingEnabled = false
+	d.confMu.Unlock()
+
+	d.conf.ConfModifier.Apply(r.Context())
+}
+
+// handleSafeBrowsingAlertDisable is the handler for the POST
+// /control/safebrowsing/alert/disable HTTP API.
+func (d *DNSFilter) handleSafeBrowsingAlertDisable(w http.ResponseWriter, r *http.Request) {
+	setProtectedBool(d.confMu, &d.conf.SafeBrowsingAlertOnly, false)
 	d.conf.ConfModifier.Apply(r.Context())
 }
 
 // handleSafeBrowsingStatus is the handler for the GET
 // /control/safebrowsing/status HTTP API.
 func (d *DNSFilter) handleSafeBrowsingStatus(w http.ResponseWriter, r *http.Request) {
+	d.confMu.RLock()
+	defer d.confMu.RUnlock()
+
 	resp := &struct {
 		Enabled bool `json:"enabled"`
+		Alert   bool `json:"alert"`
 	}{
-		Enabled: protectedBool(d.confMu, &d.conf.SafeBrowsingEnabled),
+		Enabled: d.conf.SafeBrowsingEnabled,
+		Alert:   d.conf.SafeBrowsingAlertOnly,
 	}
 
 	aghhttp.WriteJSONResponseOK(r.Context(), d.logger, w, r, resp)
@@ -693,24 +724,55 @@ func (d *DNSFilter) handleSafeBrowsingStatus(w http.ResponseWriter, r *http.Requ
 // handleParentalEnable is the handler for the POST /control/parental/enable
 // HTTP API.
 func (d *DNSFilter) handleParentalEnable(w http.ResponseWriter, r *http.Request) {
-	setProtectedBool(d.confMu, &d.conf.ParentalEnabled, true)
+	d.confMu.Lock()
+	d.conf.ParentalEnabled = true
+	d.conf.ParentalAlertOnly = false
+	d.confMu.Unlock()
+
 	d.conf.ConfModifier.Apply(r.Context())
 }
 
 // handleParentalDisable is the handler for the POST /control/parental/disable
 // HTTP API.
 func (d *DNSFilter) handleParentalDisable(w http.ResponseWriter, r *http.Request) {
-	setProtectedBool(d.confMu, &d.conf.ParentalEnabled, false)
+	d.confMu.Lock()
+	d.conf.ParentalEnabled = false
+	d.conf.ParentalAlertOnly = false
+	d.confMu.Unlock()
+
+	d.conf.ConfModifier.Apply(r.Context())
+}
+
+// handleParentalAlertEnable is the handler for the POST
+// /control/parental/alert/enable HTTP API.
+func (d *DNSFilter) handleParentalAlertEnable(w http.ResponseWriter, r *http.Request) {
+	d.confMu.Lock()
+	d.conf.ParentalAlertOnly = true
+	d.conf.ParentalEnabled = false
+	d.confMu.Unlock()
+
+	d.conf.ConfModifier.Apply(r.Context())
+}
+
+// handleParentalAlertDisable is the handler for the POST
+// /control/parental/alert/disable HTTP API.
+func (d *DNSFilter) handleParentalAlertDisable(w http.ResponseWriter, r *http.Request) {
+	setProtectedBool(d.confMu, &d.conf.ParentalAlertOnly, false)
 	d.conf.ConfModifier.Apply(r.Context())
 }
 
 // handleParentalStatus is the handler for the GET /control/parental/status
 // HTTP API.
 func (d *DNSFilter) handleParentalStatus(w http.ResponseWriter, r *http.Request) {
+	d.confMu.RLock()
+	defer d.confMu.RUnlock()
+
 	resp := &struct {
 		Enabled bool `json:"enabled"`
+		Alert   bool `json:"alert"`
 	}{
-		Enabled: protectedBool(d.confMu, &d.conf.ParentalEnabled),
+		Enabled: d.conf.ParentalEnabled,
+		Alert:   d.conf.ParentalAlertOnly,
 	}
 
 	aghhttp.WriteJSONResponseOK(r.Context(), d.logger, w, r, resp)
@@ -722,10 +784,14 @@ func (d *DNSFilter) RegisterFilteringHandlers() {
 
 	registerHTTP(http.MethodPost, "/control/safebrowsing/enable", d.handleSafeBrowsingEnable)
 	registerHTTP(http.MethodPost, "/control/safebrowsing/disable", d.handleSafeBrowsingDisable)
+	registerHTTP(http.MethodPost, "/control/safebrowsing/alert/enable", d.handleSafeBrowsingAlertEnable)
+	registerHTTP(http.MethodPost, "/control/safebrowsing/alert/disable", d.handleSafeBrowsingAlertDisable)
 	registerHTTP(http.MethodGet, "/control/safebrowsing/status", d.handleSafeBrowsingStatus)
 
 	registerHTTP(http.MethodPost, "/control/parental/enable", d.handleParentalEnable)
 	registerHTTP(http.MethodPost, "/control/parental/disable", d.handleParentalDisable)
+	registerHTTP(http.MethodPost, "/control/parental/alert/enable", d.handleParentalAlertEnable)
+	registerHTTP(http.MethodPost, "/control/parental/alert/disable", d.handleParentalAlertDisable)
 	registerHTTP(http.MethodGet, "/control/parental/status", d.handleParentalStatus)
 
 	registerHTTP(http.MethodPost, "/control/safesearch/enable", d.handleSafeSearchEnable)

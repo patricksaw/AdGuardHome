@@ -171,6 +171,10 @@ class Api {
 
     PARENTAL_DISABLE = { path: 'parental/disable', method: 'POST' };
 
+    PARENTAL_ALERT_ENABLE = { path: 'parental/alert/enable', method: 'POST' };
+
+    PARENTAL_ALERT_DISABLE = { path: 'parental/alert/disable', method: 'POST' };
+
     getParentalStatus() {
         const { path, method } = this.PARENTAL_STATUS;
 
@@ -189,12 +193,28 @@ class Api {
         return this.makeRequest(path, method);
     }
 
+    enableParentalAlert() {
+        const { path, method } = this.PARENTAL_ALERT_ENABLE;
+
+        return this.makeRequest(path, method);
+    }
+
+    disableParentalAlert() {
+        const { path, method } = this.PARENTAL_ALERT_DISABLE;
+
+        return this.makeRequest(path, method);
+    }
+
     // Safebrowsing
     SAFEBROWSING_STATUS = { path: 'safebrowsing/status', method: 'GET' };
 
     SAFEBROWSING_ENABLE = { path: 'safebrowsing/enable', method: 'POST' };
 
     SAFEBROWSING_DISABLE = { path: 'safebrowsing/disable', method: 'POST' };
+
+    SAFEBROWSING_ALERT_ENABLE = { path: 'safebrowsing/alert/enable', method: 'POST' };
+
+    SAFEBROWSING_ALERT_DISABLE = { path: 'safebrowsing/alert/disable', method: 'POST' };
 
     getSafebrowsingStatus() {
         const { path, method } = this.SAFEBROWSING_STATUS;
@@ -210,6 +230,18 @@ class Api {
 
     disableSafebrowsing() {
         const { path, method } = this.SAFEBROWSING_DISABLE;
+
+        return this.makeRequest(path, method);
+    }
+
+    enableSafebrowsingAlert() {
+        const { path, method } = this.SAFEBROWSING_ALERT_ENABLE;
+
+        return this.makeRequest(path, method);
+    }
+
+    disableSafebrowsingAlert() {
+        const { path, method } = this.SAFEBROWSING_ALERT_DISABLE;
 
         return this.makeRequest(path, method);
     }
