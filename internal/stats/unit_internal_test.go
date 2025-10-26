@@ -18,7 +18,7 @@ func TestUnit_Deserialize(t *testing.T) {
 			domains:            map[string]uint64{},
 			blockedDomains:     map[string]uint64{},
 			clients:            map[string]uint64{},
-			nResult:            []uint64{0, 0, 0, 0, 0, 0},
+			nResult:            []uint64{0, 0, 0, 0, 0, 0, 0, 0, 0},
 			id:                 0,
 			nTotal:             0,
 			timeSum:            0,
@@ -26,7 +26,7 @@ func TestUnit_Deserialize(t *testing.T) {
 			upstreamsTimeSum:   map[string]uint64{},
 		},
 		db: &unitDB{
-			NResult:            []uint64{0, 0, 0, 0, 0, 0},
+			NResult:            []uint64{0, 0, 0, 0, 0, 0, 0, 0, 0},
 			Domains:            []countPair{},
 			BlockedDomains:     []countPair{},
 			Clients:            []countPair{},
@@ -47,7 +47,7 @@ func TestUnit_Deserialize(t *testing.T) {
 			clients: map[string]uint64{
 				"127.0.0.1": 2,
 			},
-			nResult: []uint64{0, 1, 1, 0, 0, 0},
+			nResult: []uint64{0, 1, 1, 0, 0, 0, 0, 0, 0},
 			id:      0,
 			nTotal:  2,
 			timeSum: 246912,
@@ -59,7 +59,7 @@ func TestUnit_Deserialize(t *testing.T) {
 			},
 		},
 		db: &unitDB{
-			NResult: []uint64{0, 1, 1, 0, 0, 0},
+			NResult: []uint64{0, 1, 1, 0, 0, 0, 0, 0, 0},
 			Domains: []countPair{{
 				"example.com", 1,
 			}},
@@ -98,7 +98,7 @@ func TestTopUpstreamsPairs(t *testing.T) {
 	}{{
 		name: "empty",
 		db: &unitDB{
-			NResult:            []uint64{0, 0, 0, 0, 0, 0},
+			NResult:            []uint64{0, 0, 0, 0, 0, 0, 0, 0, 0},
 			Domains:            []countPair{},
 			BlockedDomains:     []countPair{},
 			Clients:            []countPair{},

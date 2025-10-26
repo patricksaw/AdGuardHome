@@ -158,16 +158,6 @@ func (s *Server) logQuery(dctx *dnsContext, ip net.IP, processingTime time.Durat
 func (s *Server) updateStats(dctx *dnsContext, clientIP string, processingTime time.Duration) {
 	pctx := dctx.proxyCtx
 
-	// Skip stats for alert-only matches.  Alert-only modes log but don't count
-	// in statistics.
-	if dctx.result.Reason.In(
-		filtering.FilteredAlert,
-		filtering.FilteredSafeBrowsingAlert,
-		filtering.FilteredParentalAlert,
-	) {
-		return
-	}
-
 	var upstreamStats []*proxy.UpstreamStatistics
 	qs := pctx.QueryStatistics()
 	if qs != nil {
@@ -191,10 +181,16 @@ func (s *Server) updateStats(dctx *dnsContext, clientIP string, processingTime t
 	switch dctx.result.Reason {
 	case filtering.FilteredSafeBrowsing:
 		e.Result = stats.RSafeBrowsing
+	case filtering.FilteredSafeBrowsingAlert:
+		e.Result = stats.RSafeBrowsingAlert
 	case filtering.FilteredParental:
 		e.Result = stats.RParental
+	case filtering.FilteredParentalAlert:
+		e.Result = stats.RParentalAlert
 	case filtering.FilteredSafeSearch:
 		e.Result = stats.RSafeSearch
+	case filtering.FilteredAlert:
+		e.Result = stats.RFilteredAlert
 	case
 		filtering.FilteredBlockList,
 		filtering.FilteredInvalid,

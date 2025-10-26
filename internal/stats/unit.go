@@ -49,8 +49,11 @@ const (
 	RSafeBrowsing
 	RSafeSearch
 	RParental
+	RFilteredAlert
+	RSafeBrowsingAlert
+	RParentalAlert
 
-	resultLast = RParental + 1
+	resultLast = RParentalAlert + 1
 )
 
 // Entry is a statistics data entry.

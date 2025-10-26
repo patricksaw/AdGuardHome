@@ -240,39 +240,39 @@ func TestServer_ProcessQueryLogsAndStats(t *testing.T) {
 	}
 }
 
-// TestServer_ProcessQueryLogsAndStats_AlertExclusion tests that alert-only
-// matches are excluded from statistics.
-func TestServer_ProcessQueryLogsAndStats_AlertExclusion(t *testing.T) {
+// TestServer_ProcessQueryLogsAndStats_AlertTracking tests that alert-only
+// matches are tracked separately in statistics.
+func TestServer_ProcessQueryLogsAndStats_AlertTracking(t *testing.T) {
 	const domain = "example.com."
 
 	testCases := []struct {
-		name             string
-		reason           filtering.Reason
-		wantStatsUpdated bool
+		name           string
+		reason         filtering.Reason
+		wantStatResult stats.Result
 	}{{
-		name:             "blocklist_alert_excluded",
-		reason:           filtering.FilteredAlert,
-		wantStatsUpdated: false,
+		name:           "blocklist_alert_tracked",
+		reason:         filtering.FilteredAlert,
+		wantStatResult: stats.RFilteredAlert,
 	}, {
-		name:             "safebrowsing_alert_excluded",
-		reason:           filtering.FilteredSafeBrowsingAlert,
-		wantStatsUpdated: false,
+		name:           "safebrowsing_alert_tracked",
+		reason:         filtering.FilteredSafeBrowsingAlert,
+		wantStatResult: stats.RSafeBrowsingAlert,
 	}, {
-		name:             "parental_alert_excluded",
-		reason:           filtering.FilteredParentalAlert,
-		wantStatsUpdated: false,
+		name:           "parental_alert_tracked",
+		reason:         filtering.FilteredParentalAlert,
+		wantStatResult: stats.RParentalAlert,
 	}, {
-		name:             "blocklist_counted",
-		reason:           filtering.FilteredBlockList,
-		wantStatsUpdated: true,
+		name:           "blocklist_blocked",
+		reason:         filtering.FilteredBlockList,
+		wantStatResult: stats.RFiltered,
 	}, {
-		name:             "safebrowsing_counted",
-		reason:           filtering.FilteredSafeBrowsing,
-		wantStatsUpdated: true,
+		name:           "safebrowsing_blocked",
+		reason:         filtering.FilteredSafeBrowsing,
+		wantStatResult: stats.RSafeBrowsing,
 	}, {
-		name:             "parental_counted",
-		reason:           filtering.FilteredParental,
-		wantStatsUpdated: true,
+		name:           "parental_blocked",
+		reason:         filtering.FilteredParental,
+		wantStatResult: stats.RParental,
 	}}
 
 	ups, err := upstream.AddressToUpstream("1.1.1.1", nil)
@@ -314,13 +314,9 @@ func TestServer_ProcessQueryLogsAndStats_AlertExclusion(t *testing.T) {
 			code := srv.processQueryLogsAndStats(testutil.ContextWithTimeout(t, testTimeout), dctx)
 			assert.Equal(t, resultCodeSuccess, code)
 
-			if tc.wantStatsUpdated {
-				require.NotNil(t, st.lastEntry, "expected stats to be updated")
-				// Stats store domain without trailing dot.
-				assert.Equal(t, "example.com", st.lastEntry.Domain)
-			} else {
-				assert.Nil(t, st.lastEntry, "expected stats to be skipped for alert-only matches")
-			}
+			require.NotNil(t, st.lastEntry, "expected stats to be updated")
+			assert.Equal(t, "example.com", st.lastEntry.Domain)
+			assert.Equal(t, tc.wantStatResult, st.lastEntry.Result)
 		})
 	}
 }
