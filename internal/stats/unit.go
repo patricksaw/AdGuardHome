@@ -467,6 +467,15 @@ func (s *StatsCtx) dataFromUnits(units []*unitDB, curID uint32) (resp *StatsResp
 		sum.NResult[RSafeBrowsing] += u.NResult[RSafeBrowsing]
 		sum.NResult[RSafeSearch] += u.NResult[RSafeSearch]
 		sum.NResult[RParental] += u.NResult[RParental]
+		if len(u.NResult) > int(RFilteredAlert) {
+			sum.NResult[RFilteredAlert] += u.NResult[RFilteredAlert]
+		}
+		if len(u.NResult) > int(RSafeBrowsingAlert) {
+			sum.NResult[RSafeBrowsingAlert] += u.NResult[RSafeBrowsingAlert]
+		}
+		if len(u.NResult) > int(RParentalAlert) {
+			sum.NResult[RParentalAlert] += u.NResult[RParentalAlert]
+		}
 	}
 
 	resp.NumDNSQueries = sum.NTotal
@@ -474,6 +483,9 @@ func (s *StatsCtx) dataFromUnits(units []*unitDB, curID uint32) (resp *StatsResp
 	resp.NumReplacedSafebrowsing = sum.NResult[RSafeBrowsing]
 	resp.NumReplacedSafesearch = sum.NResult[RSafeSearch]
 	resp.NumReplacedParental = sum.NResult[RParental]
+	resp.NumFilteredAlert = sum.NResult[RFilteredAlert]
+	resp.NumSafebrowsingAlert = sum.NResult[RSafeBrowsingAlert]
+	resp.NumParentalAlert = sum.NResult[RParentalAlert]
 
 	if timeN != 0 {
 		resp.AvgProcessingTime = microsecondsToSeconds(float64(sum.TimeAvg / timeN))

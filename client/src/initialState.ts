@@ -215,6 +215,9 @@ export type StatsData = {
     numReplacedParental: number;
     numReplacedSafebrowsing: number;
     numReplacedSafesearch: number;
+    numFilteredAlert: number;
+    numSafebrowsingAlert: number;
+    numParentalAlert: number;
     avgProcessingTime: number;
     timeUnits: string;
     enabled: boolean;
@@ -617,6 +620,9 @@ export const initialState: RootState = {
         numReplacedParental: 0,
         numReplacedSafebrowsing: 0,
         numReplacedSafesearch: 0,
+        numFilteredAlert: 0,
+        numSafebrowsingAlert: 0,
+        numParentalAlert: 0,
         avgProcessingTime: 0,
         timeUnits: TIME_UNITS.HOURS,
         enabled: true,

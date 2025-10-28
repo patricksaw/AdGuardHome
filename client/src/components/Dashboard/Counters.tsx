@@ -67,6 +67,9 @@ const Counters = ({ refreshButton, subtitle }: CountersProps) => {
         numReplacedSafebrowsing,
         numReplacedParental,
         numReplacedSafesearch,
+        numFilteredAlert,
+        numSafebrowsingAlert,
+        numParentalAlert,
         avgProcessingTime,
         timeUnits,
     } = useSelector<RootState, RootState['stats']>((state) => state.stats, shallowEqual);
@@ -113,6 +116,24 @@ const Counters = ({ refreshButton, subtitle }: CountersProps) => {
             count: formatNumber(numReplacedSafesearch),
             tooltipTitle: 'number_of_dns_query_to_safe_search',
             response_status: RESPONSE_FILTER.SAFE_SEARCH.QUERY,
+        },
+        {
+            label: 'blocklist_alerts',
+            count: formatNumber(numFilteredAlert),
+            tooltipTitle: 'number_of_blocklist_alerts',
+            response_status: RESPONSE_FILTER.ALERTS.QUERY,
+        },
+        {
+            label: 'browsing_security_alerts',
+            count: formatNumber(numSafebrowsingAlert),
+            tooltipTitle: 'number_of_browsing_security_alerts',
+            response_status: RESPONSE_FILTER.SAFEBROWSING_ALERTS.QUERY,
+        },
+        {
+            label: 'parental_control_alerts',
+            count: formatNumber(numParentalAlert),
+            tooltipTitle: 'number_of_parental_control_alerts',
+            response_status: RESPONSE_FILTER.PARENTAL_ALERTS.QUERY,
         },
         {
             label: 'average_processing_time',

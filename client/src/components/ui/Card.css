@@ -134,7 +134,7 @@
 
 @media (min-width: 992px) {
     .dashboard .card:not(.card--full) {
-        height: 360px;
+        min-height: 360px;
     }
 }
 
