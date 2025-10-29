@@ -168,9 +168,25 @@ AdGuard Home provides a lot of features out-of-the-box with no need to install a
 | Blocking phishing and malware domains                                   | ✅                | ❌ (requires non-default blocklists)                      |
 | Parental control (blocking adult domains)                               | ✅                | ❌ (requires non-default blocklists)                      |
 | Force Safe search on search engines                                     | ✅                | ❌                                                        |
+| Alert mode (monitor without blocking)                                   | ✅                | ❌                                                        |
 | Per-client (device) configuration                                       | ✅                | ✅                                                        |
 | Access settings (choose who can use AGH DNS)                            | ✅                | ❌                                                        |
 | Running [without root privileges][wiki-noroot]                          | ✅                | ❌                                                        |
+
+#### Alert Mode
+
+AdGuard Home supports **alert-only mode** for filters and security features, allowing you to monitor DNS queries that would be blocked without actually blocking them. This is useful for:
+
+- Testing new filters before fully enabling them
+- Monitoring security threats without disrupting service
+- Auditing DNS traffic patterns
+
+Alert mode is available for:
+- Blocklist filters
+- Browsing security (malware/phishing protection)
+- Parental control filters
+
+Alerts are logged in the query log with distinct status labels and tracked separately in dashboard statistics.
 
 [wiki-noroot]: https://adguard-dns.io/kb/adguard-home/getting-started/#running-without-superuser
 
