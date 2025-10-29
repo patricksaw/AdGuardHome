@@ -103,6 +103,15 @@ type unit struct {
 	// been blocked.
 	blockedDomains map[string]uint64
 
+	// filteredAlertDomains stores alert-only blocklist matches.
+	filteredAlertDomains map[string]uint64
+
+	// safebrowsingAlertDomains stores alert-only browsing security matches.
+	safebrowsingAlertDomains map[string]uint64
+
+	// parentalAlertDomains stores alert-only parental control matches.
+	parentalAlertDomains map[string]uint64
+
 	// clients stores the number of requests from each client.
 	clients map[string]uint64
 
@@ -134,13 +143,16 @@ type unit struct {
 // newUnit allocates the new *unit.
 func newUnit(id uint32) (u *unit) {
 	return &unit{
-		domains:            map[string]uint64{},
-		blockedDomains:     map[string]uint64{},
-		clients:            map[string]uint64{},
-		upstreamsResponses: map[string]uint64{},
-		upstreamsTimeSum:   map[string]uint64{},
-		nResult:            make([]uint64, resultLast),
-		id:                 id,
+		domains:                  map[string]uint64{},
+		blockedDomains:           map[string]uint64{},
+		filteredAlertDomains:     map[string]uint64{},
+		safebrowsingAlertDomains: map[string]uint64{},
+		parentalAlertDomains:     map[string]uint64{},
+		clients:                  map[string]uint64{},
+		upstreamsResponses:       map[string]uint64{},
+		upstreamsTimeSum:         map[string]uint64{},
+		nResult:                  make([]uint64, resultLast),
+		id:                       id,
 	}
 }
 
@@ -181,6 +193,15 @@ type unitDB struct {
 	// TimeAvg is the average of processing times in microseconds of all the
 	// requests in the unit.
 	TimeAvg uint32
+
+	// FilteredAlertDomains is blocklist matches in alert mode.
+	FilteredAlertDomains []countPair
+
+	// SafebrowsingAlertDomains is browsing security matches in alert mode.
+	SafebrowsingAlertDomains []countPair
+
+	// ParentalAlertDomains is parental control matches in alert mode.
+	ParentalAlertDomains []countPair
 }
 
 // newUnitID is the default UnitIDGenFunc that generates the unique id hourly.
@@ -265,14 +286,17 @@ func (u *unit) serialize() (udb *unitDB) {
 	}
 
 	return &unitDB{
-		NTotal:             u.nTotal,
-		NResult:            append([]uint64{}, u.nResult...),
-		Domains:            convertMapToSlice(u.domains, maxDomains),
-		BlockedDomains:     convertMapToSlice(u.blockedDomains, maxDomains),
-		Clients:            convertMapToSlice(u.clients, maxClients),
-		UpstreamsResponses: convertMapToSlice(u.upstreamsResponses, maxUpstreams),
-		UpstreamsTimeSum:   convertMapToSlice(u.upstreamsTimeSum, maxUpstreams),
-		TimeAvg:            timeAvg,
+		NTotal:                   u.nTotal,
+		NResult:                  append([]uint64{}, u.nResult...),
+		Domains:                  convertMapToSlice(u.domains, maxDomains),
+		BlockedDomains:           convertMapToSlice(u.blockedDomains, maxDomains),
+		Clients:                  convertMapToSlice(u.clients, maxClients),
+		UpstreamsResponses:       convertMapToSlice(u.upstreamsResponses, maxUpstreams),
+		UpstreamsTimeSum:         convertMapToSlice(u.upstreamsTimeSum, maxUpstreams),
+		TimeAvg:                  timeAvg,
+		FilteredAlertDomains:     convertMapToSlice(u.filteredAlertDomains, maxDomains),
+		SafebrowsingAlertDomains: convertMapToSlice(u.safebrowsingAlertDomains, maxDomains),
+		ParentalAlertDomains:     convertMapToSlice(u.parentalAlertDomains, maxDomains),
 	}
 }
 
@@ -311,6 +335,9 @@ func (u *unit) deserialize(udb *unitDB) {
 	copy(u.nResult, udb.NResult)
 	u.domains = convertSliceToMap(udb.Domains)
 	u.blockedDomains = convertSliceToMap(udb.BlockedDomains)
+	u.filteredAlertDomains = convertSliceToMap(udb.FilteredAlertDomains)
+	u.safebrowsingAlertDomains = convertSliceToMap(udb.SafebrowsingAlertDomains)
+	u.parentalAlertDomains = convertSliceToMap(udb.ParentalAlertDomains)
 	u.clients = convertSliceToMap(udb.Clients)
 	u.upstreamsResponses = convertSliceToMap(udb.UpstreamsResponses)
 	u.upstreamsTimeSum = convertSliceToMap(udb.UpstreamsTimeSum)
@@ -320,9 +347,16 @@ func (u *unit) deserialize(udb *unitDB) {
 // add adds new data to u.  It's safe for concurrent use.
 func (u *unit) add(e *Entry) {
 	u.nResult[e.Result]++
-	if e.Result == RNotFiltered {
+	switch e.Result {
+	case RNotFiltered:
 		u.domains[e.Domain]++
-	} else {
+	case RFilteredAlert:
+		u.filteredAlertDomains[e.Domain]++
+	case RSafeBrowsingAlert:
+		u.safebrowsingAlertDomains[e.Domain]++
+	case RParentalAlert:
+		u.parentalAlertDomains[e.Domain]++
+	default:
 		u.blockedDomains[e.Domain]++
 	}
 
@@ -417,11 +451,14 @@ func (s *StatsCtx) getData(limit uint32) (resp *StatsResp, ok bool) {
 		return &StatsResp{
 			TimeUnits: "days",
 
-			TopBlocked:            []topAddrs{},
-			TopClients:            []topAddrs{},
-			TopQueried:            []topAddrs{},
-			TopUpstreamsResponses: []topAddrs{},
-			TopUpstreamsAvgTime:   []topAddrsFloat{},
+			TopBlocked:                  []topAddrs{},
+			TopClients:                  []topAddrs{},
+			TopQueried:                  []topAddrs{},
+			TopFilteredAlertDomains:     []topAddrs{},
+			TopSafebrowsingAlertDomains: []topAddrs{},
+			TopParentalAlertDomains:     []topAddrs{},
+			TopUpstreamsResponses:       []topAddrs{},
+			TopUpstreamsAvgTime:         []topAddrsFloat{},
 
 			BlockedFiltering:     []uint64{},
 			DNSQueries:           []uint64{},
@@ -443,11 +480,14 @@ func (s *StatsCtx) dataFromUnits(units []*unitDB, curID uint32) (resp *StatsResp
 	topUpstreamsResponses, topUpstreamsAvgTime := topUpstreamsPairs(units)
 
 	resp = &StatsResp{
-		TopQueried:            topsCollector(units, maxDomains, s.ignored, func(u *unitDB) (pairs []countPair) { return u.Domains }),
-		TopBlocked:            topsCollector(units, maxDomains, s.ignored, func(u *unitDB) (pairs []countPair) { return u.BlockedDomains }),
-		TopUpstreamsResponses: topUpstreamsResponses,
-		TopUpstreamsAvgTime:   topUpstreamsAvgTime,
-		TopClients:            topsCollector(units, maxClients, nil, topClientPairs(s)),
+		TopQueried:                  topsCollector(units, maxDomains, s.ignored, func(u *unitDB) (pairs []countPair) { return u.Domains }),
+		TopBlocked:                  topsCollector(units, maxDomains, s.ignored, func(u *unitDB) (pairs []countPair) { return u.BlockedDomains }),
+		TopFilteredAlertDomains:     topsCollector(units, maxDomains, s.ignored, func(u *unitDB) (pairs []countPair) { return u.FilteredAlertDomains }),
+		TopSafebrowsingAlertDomains: topsCollector(units, maxDomains, s.ignored, func(u *unitDB) (pairs []countPair) { return u.SafebrowsingAlertDomains }),
+		TopParentalAlertDomains:     topsCollector(units, maxDomains, s.ignored, func(u *unitDB) (pairs []countPair) { return u.ParentalAlertDomains }),
+		TopUpstreamsResponses:       topUpstreamsResponses,
+		TopUpstreamsAvgTime:         topUpstreamsAvgTime,
+		TopClients:                  topsCollector(units, maxClients, nil, topClientPairs(s)),
 	}
 
 	s.fillCollectedStats(resp, units, curID)

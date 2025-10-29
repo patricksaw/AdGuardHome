@@ -203,6 +203,9 @@ export type StatsData = {
     replacedParental: number[];
     replacedSafebrowsing: number[];
     topBlockedDomains: { name: string; count: number }[];
+    topFilteredAlertDomains: { name: string; count: number }[];
+    topSafebrowsingAlertDomains: { name: string; count: number }[];
+    topParentalAlertDomains: { name: string; count: number }[];
     topClients: {
         name: string;
         count: number;
@@ -613,6 +616,9 @@ export const initialState: RootState = {
         replacedParental: [],
         replacedSafebrowsing: [],
         topBlockedDomains: [],
+        topFilteredAlertDomains: [],
+        topSafebrowsingAlertDomains: [],
+        topParentalAlertDomains: [],
         topClients: [],
         topQueriedDomains: [],
         numBlockedFiltering: 0,

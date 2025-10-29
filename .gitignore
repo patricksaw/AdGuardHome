@@ -23,6 +23,7 @@
 /client/playwright-report/
 /client/playwright/.cache/
 /client/test-results/
+/.playwright-mcp/
 /data/
 /dist/
 /filtering/tests/filtering.TestLotsOfRules*.pprof

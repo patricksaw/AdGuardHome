@@ -67,9 +67,9 @@ const Counters = ({ refreshButton, subtitle }: CountersProps) => {
         numReplacedSafebrowsing,
         numReplacedParental,
         numReplacedSafesearch,
-        numFilteredAlert,
-        numSafebrowsingAlert,
-        numParentalAlert,
+        numFilteredAlert = 0,
+        numSafebrowsingAlert = 0,
+        numParentalAlert = 0,
         avgProcessingTime,
         timeUnits,
     } = useSelector<RootState, RootState['stats']>((state) => state.stats, shallowEqual);

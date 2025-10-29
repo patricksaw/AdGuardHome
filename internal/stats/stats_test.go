@@ -99,12 +99,15 @@ func TestStats(t *testing.T) {
 		}}
 
 		wantData := &stats.StatsResp{
-			TimeUnits:             "hours",
-			TopQueried:            []map[string]uint64{0: {reqDomain: 1}},
-			TopClients:            []map[string]uint64{0: {cliIPStr: 2}},
-			TopBlocked:            []map[string]uint64{0: {reqDomain: 1}},
-			TopUpstreamsResponses: []map[string]uint64{0: {respUpstream: 2}},
-			TopUpstreamsAvgTime:   []map[string]float64{0: {respUpstream: 0.222222}},
+			TimeUnits:                   "hours",
+			TopQueried:                  []map[string]uint64{0: {reqDomain: 1}},
+			TopClients:                  []map[string]uint64{0: {cliIPStr: 2}},
+			TopBlocked:                  []map[string]uint64{0: {reqDomain: 1}},
+			TopFilteredAlertDomains:     []map[string]uint64{},
+			TopSafebrowsingAlertDomains: []map[string]uint64{},
+			TopParentalAlertDomains:     []map[string]uint64{},
+			TopUpstreamsResponses:       []map[string]uint64{0: {respUpstream: 2}},
+			TopUpstreamsAvgTime:         []map[string]float64{0: {respUpstream: 0.222222}},
 			DNSQueries: []uint64{
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
@@ -126,6 +129,9 @@ func TestStats(t *testing.T) {
 			NumReplacedSafebrowsing: 0,
 			NumReplacedSafesearch:   0,
 			NumReplacedParental:     0,
+			NumFilteredAlert:        0,
+			NumSafebrowsingAlert:    0,
+			NumParentalAlert:        0,
 			AvgProcessingTime:       0.123456,
 		}
 
@@ -153,16 +159,19 @@ func TestStats(t *testing.T) {
 
 		_24zeroes := [24]uint64{}
 		emptyData := &stats.StatsResp{
-			TimeUnits:             "hours",
-			TopQueried:            []map[string]uint64{},
-			TopClients:            []map[string]uint64{},
-			TopBlocked:            []map[string]uint64{},
-			TopUpstreamsResponses: []map[string]uint64{},
-			TopUpstreamsAvgTime:   []map[string]float64{},
-			DNSQueries:            _24zeroes[:],
-			BlockedFiltering:      _24zeroes[:],
-			ReplacedSafebrowsing:  _24zeroes[:],
-			ReplacedParental:      _24zeroes[:],
+			TimeUnits:                   "hours",
+			TopQueried:                  []map[string]uint64{},
+			TopClients:                  []map[string]uint64{},
+			TopBlocked:                  []map[string]uint64{},
+			TopFilteredAlertDomains:     []map[string]uint64{},
+			TopSafebrowsingAlertDomains: []map[string]uint64{},
+			TopParentalAlertDomains:     []map[string]uint64{},
+			TopUpstreamsResponses:       []map[string]uint64{},
+			TopUpstreamsAvgTime:         []map[string]float64{},
+			DNSQueries:                  _24zeroes[:],
+			BlockedFiltering:            _24zeroes[:],
+			ReplacedSafebrowsing:        _24zeroes[:],
+			ReplacedParental:            _24zeroes[:],
 		}
 
 		req = httptest.NewRequest(http.MethodGet, "/control/stats", nil)
@@ -222,6 +231,89 @@ func TestLargeNumbers(t *testing.T) {
 	data := &stats.StatsResp{}
 	assertSuccessAndUnmarshal(t, data, handlers["/control/stats"], req)
 	assert.Equal(t, hoursNum*cliNumPerHour, int(data.NumDNSQueries))
+}
+
+func TestAlertDomains(t *testing.T) {
+	cliIP := netutil.IPv4Localhost()
+	cliIPStr := cliIP.String()
+
+	handlers := map[string]http.Handler{}
+	conf := stats.Config{
+		Logger:            slogutil.NewDiscardLogger(),
+		ShouldCountClient: func([]string) bool { return true },
+		Filename:          filepath.Join(t.TempDir(), "stats.db"),
+		Limit:             timeutil.Day,
+		Enabled:           true,
+		UnitID:            constUnitID,
+		HTTPReg: &aghtest.Registrar{
+			OnRegister: func(_, url string, handler http.HandlerFunc) {
+				handlers[url] = handler
+			},
+		},
+	}
+
+	s, err := stats.New(conf)
+	require.NoError(t, err)
+
+	s.Start()
+	testutil.CleanupAndRequireSuccess(t, s.Close)
+
+	const (
+		alertDomain1       = "alert1.example"
+		alertDomain2       = "alert2.example"
+		safeBrowsingDomain = "malware.test"
+		parentalDomain     = "adult.test"
+	)
+
+	entries := []*stats.Entry{{
+		Domain:         alertDomain1,
+		Client:         cliIPStr,
+		Result:         stats.RFilteredAlert,
+		ProcessingTime: time.Microsecond * 100000,
+	}, {
+		Domain:         alertDomain2,
+		Client:         cliIPStr,
+		Result:         stats.RFilteredAlert,
+		ProcessingTime: time.Microsecond * 100000,
+	}, {
+		Domain:         alertDomain1,
+		Client:         cliIPStr,
+		Result:         stats.RFilteredAlert,
+		ProcessingTime: time.Microsecond * 100000,
+	}, {
+		Domain:         safeBrowsingDomain,
+		Client:         cliIPStr,
+		Result:         stats.RSafeBrowsingAlert,
+		ProcessingTime: time.Microsecond * 100000,
+	}, {
+		Domain:         parentalDomain,
+		Client:         cliIPStr,
+		Result:         stats.RParentalAlert,
+		ProcessingTime: time.Microsecond * 100000,
+	}}
+
+	for _, e := range entries {
+		s.Update(e)
+	}
+
+	data := &stats.StatsResp{}
+	req := httptest.NewRequest(http.MethodGet, "/control/stats", nil)
+	assertSuccessAndUnmarshal(t, data, handlers["/control/stats"], req)
+
+	assert.Equal(t, uint64(3), data.NumFilteredAlert)
+	assert.Equal(t, uint64(1), data.NumSafebrowsingAlert)
+	assert.Equal(t, uint64(1), data.NumParentalAlert)
+	assert.Equal(t, uint64(5), data.NumDNSQueries)
+
+	assert.NotEmpty(t, data.TopFilteredAlertDomains)
+	assert.Equal(t, uint64(2), data.TopFilteredAlertDomains[0][alertDomain1])
+	assert.Equal(t, uint64(1), data.TopFilteredAlertDomains[1][alertDomain2])
+
+	assert.NotEmpty(t, data.TopSafebrowsingAlertDomains)
+	assert.Equal(t, uint64(1), data.TopSafebrowsingAlertDomains[0][safeBrowsingDomain])
+
+	assert.NotEmpty(t, data.TopParentalAlertDomains)
+	assert.Equal(t, uint64(1), data.TopParentalAlertDomains[0][parentalDomain])
 }
 
 func TestShouldCount(t *testing.T) {

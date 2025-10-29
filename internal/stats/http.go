@@ -28,6 +28,10 @@ type StatsResp struct {
 	TopClients []topAddrs `json:"top_clients"`
 	TopBlocked []topAddrs `json:"top_blocked_domains"`
 
+	TopFilteredAlertDomains     []topAddrs `json:"top_filtered_alert_domains"`
+	TopSafebrowsingAlertDomains []topAddrs `json:"top_safebrowsing_alert_domains"`
+	TopParentalAlertDomains     []topAddrs `json:"top_parental_alert_domains"`
+
 	TopUpstreamsResponses []topAddrs      `json:"top_upstreams_responses"`
 	TopUpstreamsAvgTime   []topAddrsFloat `json:"top_upstreams_avg_time"`
 

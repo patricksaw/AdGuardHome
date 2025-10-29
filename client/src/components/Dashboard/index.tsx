@@ -9,6 +9,9 @@ import Counters from './Counters';
 import Clients from './Clients';
 import QueriedDomains from './QueriedDomains';
 import BlockedDomains from './BlockedDomains';
+import FilteredAlertDomains from './FilteredAlertDomains';
+import SafebrowsingAlertDomains from './SafebrowsingAlertDomains';
+import ParentalAlertDomains from './ParentalAlertDomains';
 import { DISABLE_PROTECTION_TIMINGS, ONE_SECOND_IN_MS, SETTINGS_URLS, TIME_UNITS } from '../../helpers/constants';
 import { msToSeconds, msToMinutes, msToHours, msToDays } from '../../helpers/helpers';
 
@@ -232,6 +235,33 @@ const Dashboard = ({
                             replacedSafebrowsing={stats.numReplacedSafebrowsing}
                             replacedSafesearch={stats.numReplacedSafesearch}
                             replacedParental={stats.numReplacedParental}
+                            refreshButton={refreshButton}
+                        />
+                    </div>
+
+                    <div className="col-lg-6">
+                        <FilteredAlertDomains
+                            subtitle={subtitle}
+                            topFilteredAlertDomains={stats.topFilteredAlertDomains || []}
+                            numFilteredAlert={stats.numFilteredAlert}
+                            refreshButton={refreshButton}
+                        />
+                    </div>
+
+                    <div className="col-lg-6">
+                        <SafebrowsingAlertDomains
+                            subtitle={subtitle}
+                            topSafebrowsingAlertDomains={stats.topSafebrowsingAlertDomains || []}
+                            numSafebrowsingAlert={stats.numSafebrowsingAlert}
+                            refreshButton={refreshButton}
+                        />
+                    </div>
+
+                    <div className="col-lg-6">
+                        <ParentalAlertDomains
+                            subtitle={subtitle}
+                            topParentalAlertDomains={stats.topParentalAlertDomains || []}
+                            numParentalAlert={stats.numParentalAlert}
                             refreshButton={refreshButton}
                         />
                     </div>

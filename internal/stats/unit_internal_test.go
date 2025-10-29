@@ -15,15 +15,18 @@ func TestUnit_Deserialize(t *testing.T) {
 	}{{
 		name: "empty",
 		want: unit{
-			domains:            map[string]uint64{},
-			blockedDomains:     map[string]uint64{},
-			clients:            map[string]uint64{},
-			nResult:            []uint64{0, 0, 0, 0, 0, 0, 0, 0, 0},
-			id:                 0,
-			nTotal:             0,
-			timeSum:            0,
-			upstreamsResponses: map[string]uint64{},
-			upstreamsTimeSum:   map[string]uint64{},
+			domains:                  map[string]uint64{},
+			blockedDomains:           map[string]uint64{},
+			filteredAlertDomains:     map[string]uint64{},
+			safebrowsingAlertDomains: map[string]uint64{},
+			parentalAlertDomains:     map[string]uint64{},
+			clients:                  map[string]uint64{},
+			nResult:                  []uint64{0, 0, 0, 0, 0, 0, 0, 0, 0},
+			id:                       0,
+			nTotal:                   0,
+			timeSum:                  0,
+			upstreamsResponses:       map[string]uint64{},
+			upstreamsTimeSum:         map[string]uint64{},
 		},
 		db: &unitDB{
 			NResult:            []uint64{0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -44,6 +47,9 @@ func TestUnit_Deserialize(t *testing.T) {
 			blockedDomains: map[string]uint64{
 				"example.net": 1,
 			},
+			filteredAlertDomains:     map[string]uint64{},
+			safebrowsingAlertDomains: map[string]uint64{},
+			parentalAlertDomains:     map[string]uint64{},
 			clients: map[string]uint64{
 				"127.0.0.1": 2,
 			},
