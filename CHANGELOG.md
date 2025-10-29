@@ -26,9 +26,17 @@ NOTE: Add new changes BELOW THIS COMMENT.
 
 - Node.js 20 and 22 support.
 
+### Fixed
+
+- DHCP settings could not be saved ([#8075]).
+- DNS Rewrite edit modal did not populate with the correct values ([#8072]).
+
 ### Removed
 
 - The outdated querylog anonymization script.
+
+[#8075]: https://github.com/AdguardTeam/AdGuardHome/issues/8075
+[#8072]: https://github.com/AdguardTeam/AdGuardHome/issues/8072
 
 <!--
 NOTE: Add new changes ABOVE THIS COMMENT.
